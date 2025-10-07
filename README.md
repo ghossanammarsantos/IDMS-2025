@@ -43,13 +43,21 @@ Dengan IDMS, seluruh kegiatan operasional bisa terpantau secara real-time dan te
 
 flowchart LR
     [Gate In] --> [Survey In] --> [Stack/Storage] --> [Survey Out] --> [Gate Out] --> [Reporting & Export]
+    
 Penjelasan Alur:
+
     Gate In → Kontainer tiba di depot, dicatat oleh petugas gate.
+    
     Survey In → Tim survey memeriksa kondisi fisik kontainer saat masuk.
-    Stack/Storage → Penumpukan di dalam depot container
+    
+    Stack/Storage → Penumpukan di dalam depot container.
+    
     Survey Out → Setelah penyimpanan atau perbaikan, kontainer diperiksa kembali sebelum keluar.
+    
     Gate Out → Petugas mencatat waktu dan data kontainer saat keluar.
+    
     Reporting → Sistem menghasilkan laporan otomatis harian/mingguan.
+    
 
 
 | Komponen                 | Teknologi                           |
@@ -63,7 +71,11 @@ Penjelasan Alur:
 
 
 📧 Author
+
 👨‍💻 Developer: Ghossan Ammar Santos
+
 📍 Integrated Depot Management System (IDMS)
+
 📬 Email: [ghossan@perserobatam.com]
+
 🌐 Repository: [https://github.com/ghossanammarsantos/idms]
