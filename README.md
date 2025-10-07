@@ -41,7 +41,6 @@ Dengan IDMS, seluruh kegiatan operasional bisa terpantau secara real-time dan te
 
 ## 🔁 Flow Singkat IDMS
 
-```mermaid
 flowchart LR
     [Gate In] --> [Survey In] --> [Stack/Storage] --> [Survey Out] --> [Gate Out] --> [Reporting & Export]
 Penjelasan Alur:
@@ -55,7 +54,7 @@ Penjelasan Alur:
 
 | Komponen                 | Teknologi                           |
 | ------------------------ | ----------------------------------- |
-| **Backend**              | Laravel 7 (PHP 7.2.5)                 |
+| **Backend**              | Laravel 7 (PHP 7.2.5)               |
 | **Database**             | Oracle Database                     |
 | **Frontend**             | Blade Template, Bootstrap 5, jQuery |
 | **Scheduler / Cron Job** | Laravel Task Scheduler              |
