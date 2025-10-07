@@ -295,6 +295,8 @@ Route::get('/admin/gateout/select2-containers', 'GateoutController@select2Contai
 
 // Report In
 Route::get('/admin/reportin', 'ReportinController@index')->name('reportin.index');
+Route::get('/admin/reportin/export', 'ReportinController@exportSurveyInPerDay')->name('reportin.export');
+Route::post('/admin/reportin/filter', 'ReportinController@filter')->name('reportin.filter');
 
 // Report By Customer
 Route::get('/admin/reportcustomer', 'ReportcustomerController@index')->name('reportcustomer.index');

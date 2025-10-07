@@ -255,7 +255,6 @@ class ReportinController extends Controller
         return Excel::download($export, $filename);
     }
 
-
     /**
      * Show the form for creating a new resource.
      *

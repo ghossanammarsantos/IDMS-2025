@@ -17,7 +17,7 @@
         "laravel/passport": "^9.4",
         "laravel/tinker": "^2.0",
         "laravel/ui": "^2.5",
-        "maatwebsite/excel": "^3.1",
+        "maatwebsite/excel": "3.1.56",
         "milon/barcode": "^11.0",
         "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/laravel-permission": "^5.11",
