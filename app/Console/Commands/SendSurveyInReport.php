@@ -25,7 +25,7 @@ class SendSurveyInReport extends Command
         $filename = "survey_in_{$now->format('Y-m-d')}_{$dateStr}.xlsx";
 
         // Penerima tetap (bisa Anda buat config jika perlu)
-        $to = ['ghossan@perserobatam.id'];
+        $to = ['ghossan@perserobatam.id', 'ali@perserobatam.com'];
 
         // Kirim
         Mail::to($to)->send(new SurveyInTodayMail($binary, $filename, $tz));
