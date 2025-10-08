@@ -1,81 +1,78 @@
-# 🏗️ IDMS — Integrated Depot Management System
+<p align="center"><img src="https://res.cloudinary.com/dtfbvvkyp/image/upload/v1566331377/laravel-logolockup-cmyk-red.svg" width="400"></p>
 
-**IDMS (Integrated Depot Management System)** adalah aplikasi berbasis web yang digunakan untuk mengelola seluruh aktivitas operasional depot kontainer secara terintegrasi — mulai dari proses **Gate In**, **Survey In**, **Survey Out**, hingga **Gate Out**, termasuk fitur **laporan otomatis harian**.
+<p align="center">
+<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/d/total.svg" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/v/stable.svg" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/license.svg" alt="License"></a>
+</p>
 
----
+## About Laravel
 
-## 🚀 About Project
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-Aplikasi ini dikembangkan untuk mendigitalisasi proses manual di lapangan dan meningkatkan efisiensi pengelolaan kontainer di depot.  
-Dengan IDMS, seluruh kegiatan operasional bisa terpantau secara real-time dan terdokumentasi rapi.
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
 
-### 🎯 Tujuan Utama:
-- Meningkatkan kecepatan dan akurasi pencatatan kontainer.
-- Meminimalkan kesalahan input manual.
-- Mempermudah proses audit dan pelaporan harian.
-- Menyediakan data operasional yang terintegrasi antar divisi.
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
----
+## Learning Laravel
 
-## ⚙️ Fitur Utama
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
 
-- 📦 **Gate In Management**  
-  Pencatatan kontainer yang masuk ke depot beserta data kendaraan dan sopir.
+If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
 
-- 🧾 **Survey In / Survey Out**  
-  Pemeriksaan kondisi kontainer masuk dan keluar, termasuk foto bukti dan status kerusakan.
+## Laravel Sponsors
 
-- 🚛 **Gate Out Management**  
-  Monitoring kontainer yang keluar dari area depot dengan detail waktu dan petugas (PIC).
+We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
 
-- 📊 **Automatic Reporting**  
-  Sistem menghasilkan laporan survey harian dan mengirimkan secara otomatis melalui email.
+- **[Vehikl](https://vehikl.com/)**
+- **[Tighten Co.](https://tighten.co)**
+- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
+- **[64 Robots](https://64robots.com)**
+- **[Cubet Techno Labs](https://cubettech.com)**
+- **[Cyber-Duck](https://cyber-duck.co.uk)**
+- **[British Software Development](https://www.britishsoftware.co)**
+- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
+- **[DevSquad](https://devsquad.com)**
+- [UserInsights](https://userinsights.com)
+- [Fragrantica](https://www.fragrantica.com)
+- [SOFTonSOFA](https://softonsofa.com/)
+- [User10](https://user10.com)
+- [Soumettre.fr](https://soumettre.fr/)
+- [CodeBrisk](https://codebrisk.com)
+- [1Forge](https://1forge.com)
+- [TECPRESSO](https://tecpresso.co.jp/)
+- [Runtime Converter](http://runtimeconverter.com/)
+- [WebL'Agence](https://weblagence.com/)
+- [Invoice Ninja](https://www.invoiceninja.com)
+- [iMi digital](https://www.imi-digital.de/)
+- [Earthlink](https://www.earthlink.ro/)
+- [Steadfast Collective](https://steadfastcollective.com/)
+- [We Are The Robots Inc.](https://watr.mx/)
+- [Understand.io](https://www.understand.io/)
+- [Abdel Elrafa](https://abdelelrafa.com)
+- [Hyper Host](https://hyper.host)
+- [Appoly](https://www.appoly.co.uk)
+- [OP.GG](https://op.gg)
 
-- 💰 **Tarif & Customer Data Management**  
-  Mengatur data pelanggan, vendor, serta tarif depo yang berlaku.
+## Contributing
 
-- 🔐 **Role-Based Access Control (RBAC)**  
-  Pengaturan hak akses sistem berdasarkan level pengguna (Administrator, Petugas Survey, Admin Staff).
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
----
+## Code of Conduct
 
-## 🔁 Flow Singkat IDMS
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
-flowchart LR
-    [Gate In] --> [Survey In] --> [Stack/Storage] --> [Survey Out] --> [Gate Out] --> [Reporting & Export]
-    
-Penjelasan Alur:
+## Security Vulnerabilities
 
-    Gate In → Kontainer tiba di depot, dicatat oleh petugas gate.
-    
-    Survey In → Tim survey memeriksa kondisi fisik kontainer saat masuk.
-    
-    Stack/Storage → Penumpukan di dalam depot container.
-    
-    Survey Out → Setelah penyimpanan atau perbaikan, kontainer diperiksa kembali sebelum keluar.
-    
-    Gate Out → Petugas mencatat waktu dan data kontainer saat keluar.
-    
-    Reporting → Sistem menghasilkan laporan otomatis harian/mingguan.
-    
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
+## License
 
-| Komponen                 | Teknologi                           |
-| ------------------------ | ----------------------------------- |
-| **Backend**              | Laravel 7 (PHP 7.2.5)               |
-| **Database**             | Oracle Database                     |
-| **Frontend**             | Blade Template, Bootstrap 5, jQuery |
-| **Scheduler / Cron Job** | Laravel Task Scheduler              |
-| **Version Control**      | Git & GitHub                        |
-| **IDE / Tools**          | Visual Studio Code, GitHub Desktop  |
-
-
-📧 Author
-
-👨‍💻 Developer: Ghossan Ammar Santos
-
-📍 Integrated Depot Management System (IDMS)
-
-📬 Email: [ghossan@perserobatam.com]
-
-🌐 Repository: [https://github.com/ghossanammarsantos/idms]
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

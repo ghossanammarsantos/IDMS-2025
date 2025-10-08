@@ -223,7 +223,7 @@ class ReportinController extends Controller
     {
         [$builder, $columnsLower] = $this->buildSurveyInBaseQuery();
 
-        $date = $request->query('date'); 
+        $date = $request->query('date'); // ex: 2025-10-05
         $exportModeAll = $request->boolean('all', false);
 
         // Ambil semua baris (kita filter per tanggal secara aman dengan Carbon, mengingat kolom bisa string)
@@ -254,6 +254,7 @@ class ReportinController extends Controller
         $filename = 'container_masuk_per_hari_' . $fileSuffix . '.xlsx';
         return Excel::download($export, $filename);
     }
+
 
     /**
      * Show the form for creating a new resource.
