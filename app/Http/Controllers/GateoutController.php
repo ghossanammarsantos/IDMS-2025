@@ -111,8 +111,7 @@ class GateoutController extends Controller
             DB::table('gate_out')->insert([
                 'no_container' => $no_container,
                 'pic_gateout'  => $pic_gateout,
-                'gateout_time' => $gateout_time,
-                'created_by'   => Auth::user()->name ?? null, // jika ingin jejak user
+                'gateout_time' => $gateout_time
             ]);
 
             // Update ann_import: set gateout CLOSE
