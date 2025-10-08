@@ -223,7 +223,7 @@ class ReportinController extends Controller
     {
         [$builder, $columnsLower] = $this->buildSurveyInBaseQuery();
 
-        $date = $request->query('date'); // ex: 2025-10-05
+        $date = $request->query('date'); 
         $exportModeAll = $request->boolean('all', false);
 
         // Ambil semua baris (kita filter per tanggal secara aman dengan Carbon, mengingat kolom bisa string)
