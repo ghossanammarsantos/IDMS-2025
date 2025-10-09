@@ -218,7 +218,7 @@ class SurveyOutController extends Controller
                 ->update([
                     'status_surveyout' => 'CLOSE',
                     'status_gateout'   => 'OPEN',
-                    'out_time'         => DB::raw('SYSTIMESTAMP'),
+                    'surveyout_time'         => DB::raw('SYSTIMESTAMP'),
                 ]);
 
             DB::commit();

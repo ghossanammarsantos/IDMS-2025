@@ -5,26 +5,33 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
-    <meta name="description" content="Robust admin is super flexible, powerful, clean &amp; modern responsive bootstrap 4 admin template.">
-    <meta name="keywords" content="admin template, robust admin template, dashboard template, flat admin template, responsive admin template, web app, crypto dashboard, bitcoin dashboard">
+    <meta name="description"
+        content="Robust admin is super flexible, powerful, clean &amp; modern responsive bootstrap 4 admin template.">
+    <meta name="keywords"
+        content="admin template, robust admin template, dashboard template, flat admin template, responsive admin template, web app, crypto dashboard, bitcoin dashboard">
     <meta name="author" content="PIXINVENT">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Depo Online</title>
     <link rel="apple-touch-icon" href="{{ url('app-assets') }}/images/ico/IDMS.png">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url('app-assets') }}/images/ico/IDMS.png">
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i%7CMuli:300,400,500,700" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i%7CMuli:300,400,500,700"
+        rel="stylesheet">
     <!-- BEGIN VENDOR CSS-->
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
     <!-- (Opsional) tema bootstrap 4 -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
 
     <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/css/vendors.css">
-    <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/vendors/css/charts/jquery-jvectormap-2.0.3.css">
+    <link rel="stylesheet" type="text/css"
+        href="{{ url('app-assets') }}/vendors/css/charts/jquery-jvectormap-2.0.3.css">
     <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/vendors/css/charts/morris.css">
     <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/vendors/css/extensions/unslider.css">
     <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/vendors/css/weather-icons/climacons.min.css">
-    <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/vendors/css/forms/selects/selectivity-full.min.css">
+    <link rel="stylesheet" type="text/css"
+        href="{{ url('app-assets') }}/vendors/css/forms/selects/selectivity-full.min.css">
     <!-- END VENDOR CSS-->
     <!-- BEGIN ROBUST CSS-->
     <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/css/app.css">
@@ -32,7 +39,8 @@
     <!-- BEGIN Page Level CSS-->
     <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/css/core/menu/menu-types/vertical-menu.css">
     <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/css/core/colors/palette-gradient.css">
-    <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/css/plugins/forms/selectivity/selectivity.css">
+    <link rel="stylesheet" type="text/css"
+        href="{{ url('app-assets') }}/css/plugins/forms/selectivity/selectivity.css">
     <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/css/plugins/calendars/clndr.css">
     <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/css/core/colors/palette-climacon.css">
     <link rel="stylesheet" type="text/css" href="{{ url('app-assets') }}/css/pages/users.css">
@@ -163,6 +171,8 @@
     @yield('head')
 </head>
 
+
+
 <body class="vertical-layout vertical-menu 2-columns   menu-expanded fixed-navbar" data-open="click"
     data-menu="vertical-menu" data-col="2-columns">
     @yield('modal')
@@ -194,24 +204,31 @@
                         <li class="dropdown dropdown-user nav-item"><a
                                 class="dropdown-toggle nav-link dropdown-user-link" href="#"
                                 data-toggle="dropdown">
-                                <span class="avatar avatar-online"><img src="{{ url('app-assets') }}/images/portrait/small/avatar-s-1.png" alt="avatar"><i></i></span>
-                                @if(auth()->check())
-                                <span class="user-name">{{ auth()->user()->name }}</span>
+                                <span class="avatar avatar-online"><img
+                                        src="{{ url('app-assets') }}/images/portrait/small/avatar-s-1.png"
+                                        alt="avatar"><i></i></span>
+                                @if (auth()->check())
+                                    <span class="user-name">{{ auth()->user()->name }}</span>
                                 @else
-                                <span class="user-name">Guest</span>
+                                    <span class="user-name">Guest</span>
                                 @endif
                                 <div class="dropdown-menu dropdown-menu-right">
-                                    <a class="dropdown-item" href="user-profile.html"><i class="ft-user"></i> Edit Profile</a>
-                                    <a class="dropdown-item" href="email-application.html"><i class="ft-mail"></i> MyInbox</a>
-                                    <a class="dropdown-item" href="user-cards.html"><i class="ft-check-square"></i> Task</a>
-                                    <a class="dropdown-item" href="chat-application.html"><i class="ft-message-square"></i> Chats</a>
+                                    <a class="dropdown-item" href="user-profile.html"><i class="ft-user"></i> Edit
+                                        Profile</a>
+                                    <a class="dropdown-item" href="email-application.html"><i class="ft-mail"></i>
+                                        MyInbox</a>
+                                    <a class="dropdown-item" href="user-cards.html"><i class="ft-check-square"></i>
+                                        Task</a>
+                                    <a class="dropdown-item" href="chat-application.html"><i
+                                            class="ft-message-square"></i> Chats</a>
                                     <div class="dropdown-divider"></div>
                                     <a class="dropdown-item" href="{{ route('logout') }}"
                                         onclick="event.preventDefault();
                                                      document.getElementById('logout-form').submit();">
                                         {{ __('Logout') }}
                                     </a>
-                                    <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                                    <form id="logout-form" action="{{ route('logout') }}" method="POST"
+                                        class="d-none">
                                         @csrf
                                     </form>
 
@@ -239,136 +256,139 @@
                 ?>
                 <?php /* @if(auth()->check() && auth()->user()->role === 'administrator') */ ?>
                 <?php if (array_search("1", $column) !== false) { ?>
-                    <li class="active nav-item"><a href="{{ url('/') }}"><i class="icon-home"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Dashboard</span><span
-                                class="badge badge badge-pill badge-danger float-right mr-2">2.1</span></a></li>
+                <li class="active nav-item"><a href="{{ url('/') }}"><i class="icon-home"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Dashboard</span><span
+                            class="badge badge badge-pill badge-danger float-right mr-2">2.1</span></a></li>
                 <?php }
                 if (array_search("2", $column) !== false || array_search("3", $column) !== false) { ?>
-                    <li class=" navigation-header"><span data-i18n="nav.category.layouts">Master Data</span><i
-                            class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
-                            data-original-title="Layouts"></i></li>
+                <li class=" navigation-header"><span data-i18n="nav.category.layouts">Master Data</span><i
+                        class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
+                        data-original-title="Layouts"></i></li>
                 <?php }
                 if (array_search("2", $column) !== false) { ?>
-                    <li class=" nav-item"><a href="index.html"><i class="fa fa-database"></i><span class="menu-title"
-                                data-i18n="nav.dash.main">Master Data</span><span
-                                class="badge badge badge-info badge-pill float-right mr-2">6</span></a>
-                        <ul class="menu-content">
-                            <li><a class="menu-item" href="{{ url('admin/datamaster/datakapal') }}"
-                                    data-i18n="nav.menu_levels.second_level">Data Kapal</a></li>
-                            <li><a class="menu-item" href="{{ url('admin/datamaster/datagudang') }}"
-                                    data-i18n="nav.menu_levels.second_level_child.main">Data Gudang</a></li>
-                            <li><a class="menu-item" href="{{ url('admin/datamaster/datacontainer') }}"
-                                    data-i18n="nav.menu_levels.second_level_child.main">Data Container</a></li>
-                            <li><a class="menu-item" href="{{ url('admin/datamaster/datacustomer') }}"
-                                    data-i18n="nav.menu_levels.second_level_child.main">Data Customer</a></li>
-                            <li><a class="menu-item" href="{{ url('admin/datamaster/datatarif') }}"
-                                    data-i18n="nav.menu_levels.second_level_child.main">Data Tarif</a></li>
-                            <li><a class="menu-item" href="{{ url('admin/datamaster/datacedex') }}"
-                                    data-i18n="nav.menu_levels.second_level_child.main">Data Cedex</a></li>
-                            <li><a class="menu-item" href="{{ url('admin/datamaster/datayard') }}"
-                                    data-i18n="nav.menu_levels.second_level_child.main">Data Yard</a></li>
-                        </ul>
-                    </li>
+                <li class=" nav-item"><a href="index.html"><i class="fa fa-database"></i><span class="menu-title"
+                            data-i18n="nav.dash.main">Master Data</span><span
+                            class="badge badge badge-info badge-pill float-right mr-2">6</span></a>
+                    <ul class="menu-content">
+                        <li><a class="menu-item" href="{{ url('admin/datamaster/datakapal') }}"
+                                data-i18n="nav.menu_levels.second_level">Data Kapal</a></li>
+                        <li><a class="menu-item" href="{{ url('admin/datamaster/datagudang') }}"
+                                data-i18n="nav.menu_levels.second_level_child.main">Data Gudang</a></li>
+                        <li><a class="menu-item" href="{{ url('admin/datamaster/datacontainer') }}"
+                                data-i18n="nav.menu_levels.second_level_child.main">Data Container</a></li>
+                        <li><a class="menu-item" href="{{ url('admin/datamaster/datacustomer') }}"
+                                data-i18n="nav.menu_levels.second_level_child.main">Data Customer</a></li>
+                        <li><a class="menu-item" href="{{ url('admin/datamaster/datatarif') }}"
+                                data-i18n="nav.menu_levels.second_level_child.main">Data Tarif</a></li>
+                        <li><a class="menu-item" href="{{ url('admin/datamaster/datacedex') }}"
+                                data-i18n="nav.menu_levels.second_level_child.main">Data Cedex</a></li>
+                        <li><a class="menu-item" href="{{ url('admin/datamaster/datayard') }}"
+                                data-i18n="nav.menu_levels.second_level_child.main">Data Yard</a></li>
+                    </ul>
+                </li>
                 <?php }
                 if (array_search("3", $column) !== false) { ?>
-                    <li class=" nav-item"><a href="#"><i class="icon-user"></i><span class="menu-title"
-                                data-i18n="nav.templates.main">User Setting</span></a>
-                        <ul class="menu-content">
-                            <li><a class="menu-item" href="{{ route('auth.userlist') }}"
-                                    data-i18n="nav.menu_levels.second_level">User list</a></li>
-                            <li><a class="menu-item" href="{{ route('auth.change')}}"
-                                    data-i18n="nav.menu_levels.second_level">Change password</a></li>
-                            <li><a class="menu-item" href="{{ route('register') }}"
-                                    data-i18n="nav.menu_levels.second_level">Create New User</a></li>
-                        </ul>
-                    </li>
+                <li class=" nav-item"><a href="#"><i class="icon-user"></i><span class="menu-title"
+                            data-i18n="nav.templates.main">User Setting</span></a>
+                    <ul class="menu-content">
+                        <li><a class="menu-item" href="{{ route('auth.userlist') }}"
+                                data-i18n="nav.menu_levels.second_level">User list</a></li>
+                        <li><a class="menu-item" href="{{ route('auth.change') }}"
+                                data-i18n="nav.menu_levels.second_level">Change password</a></li>
+                        <li><a class="menu-item" href="{{ route('register') }}"
+                                data-i18n="nav.menu_levels.second_level">Create New User</a></li>
+                    </ul>
+                </li>
                 <?php }
                 if (array_search("4", $column) !== false || array_search("5", $column) !== false) { ?>
-                    <!-- Menu OPERATION -->
-                    <li class=" navigation-header"><span data-i18n="nav.category.general">ADM.OPERATION</span><i
-                            class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
-                            data-original-title="General"></i>
-                    </li>
+                <!-- Menu OPERATION -->
+                <li class=" navigation-header"><span data-i18n="nav.category.general">ADM.OPERATION</span><i
+                        class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
+                        data-original-title="General"></i>
+                </li>
                 <?php }
                 if (array_search("4", $column) !== false) { ?>
-                    <li class="nav-item"><a href="{{ url('admin/annimport') }}"><i class="fa fa-bullhorn"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Ann Import</span></a>
-                    </li>
-                    <li class="nav-item"><a href="{{ url('admin/movementinout') }}"><i class="fa fa-random"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Movements In/Out</span></a>
-                    </li>
+                <li class="nav-item"><a href="{{ url('admin/annimport') }}"><i class="fa fa-bullhorn"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Ann Import</span></a>
+                </li>
+                <li class="nav-item"><a href="{{ url('admin/movementinout') }}"><i class="fa fa-random"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Movements In/Out</span></a>
+                </li>
                 <?php }
                 if (array_search("5", $column) !== false) { ?>
-                    <li class="nav-item"><a href="{{ url('admin/workorder') }}"><i class="fa fa-desktop"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Work Order</span></a>
-                    </li>
-                    <li class="nav-item"><a href="{{ url('admin/monitoringyard') }}"><i class="fa fa-th"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Monitoring Yard</span></a>
-                    </li>
+                <li class="nav-item"><a href="{{ url('admin/workorder') }}"><i class="fa fa-desktop"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Work Order</span></a>
+                </li>
+                <li class="nav-item"><a href="{{ url('admin/monitoringyard') }}"><i class="fa fa-th"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Monitoring Yard</span></a>
+                </li>
                 <?php }
                 if (array_search("6", $column) !== false) { ?>
-                    <li class=" navigation-header"><span data-i18n="nav.category.general">OPERATION</span><i
-                            class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
-                            data-original-title="General"></i>
-                    </li>
-                    <li class="nav-item"><a href="{{ url('admin/eor') }}"><i class="fa fa-cogs"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">EOR</span></a>
-                    </li>
+                <li class=" navigation-header"><span data-i18n="nav.category.general">OPERATION</span><i
+                        class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
+                        data-original-title="General"></i>
+                </li>
+                <li class="nav-item"><a href="{{ url('admin/eor') }}"><i class="fa fa-cogs"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">EOR</span></a>
+                </li>
 
 
-                    <!-- Menu OPERATION -->
+                <!-- Menu OPERATION -->
                 <?php }
                 if (array_search("7", $column) !== false) { ?>
-                    <!-- Menu IN -->
-                    <li class=" navigation-header"><span data-i18n="nav.category.general">IN</span><i
-                            class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
-                            data-original-title="General"></i>
-                    </li>
-                    <li class="nav-item"><a href="{{ url('admin/gatein') }}"><i class="fa fa-mail-forward"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Gate IN</span></a>
-                    </li>
-                    <li class="nav-item"><a href="{{ url('admin/surveyin') }}"><i class="fa fa-child"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Survey IN</span></a>
-                    </li>
-                    <!-- Menu IN -->
+                <!-- Menu IN -->
+                <li class=" navigation-header"><span data-i18n="nav.category.general">IN</span><i
+                        class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
+                        data-original-title="General"></i>
+                </li>
+                <li class="nav-item"><a href="{{ url('admin/gatein') }}"><i class="fa fa-mail-forward"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Gate IN</span></a>
+                </li>
+                <li class="nav-item"><a href="{{ url('admin/surveyin') }}"><i class="fa fa-child"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Survey IN</span></a>
+                </li>
+                <li class="nav-item"><a href="{{ url('admin/eor') }}"><i class="fa fa-cogs"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">EOR</span></a>
+                </li>
+                <!-- Menu IN -->
                 <?php }
                 if (array_search("8", $column) !== false) { ?>
-                    <!-- Menu OUT -->
-                    <li class=" navigation-header"><span data-i18n="nav.category.general">OUT</span><i
-                            class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
-                            data-original-title="General"></i>
-                    </li>
-                    <li class="nav-item"><a href="{{ url('admin/surveyout') }}"><i class="fa fa-child"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Survey OUT</span></a>
-                    </li>
-                    <li class="nav-item"><a href="{{ url('admin/gateout') }}"><i class="fa fa-mail-reply"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Gate OUT</span></a>
-                    </li>
-                    <!-- Menu OUT -->
+                <!-- Menu OUT -->
+                <li class=" navigation-header"><span data-i18n="nav.category.general">OUT</span><i
+                        class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
+                        data-original-title="General"></i>
+                </li>
+                <li class="nav-item"><a href="{{ url('admin/surveyout') }}"><i class="fa fa-child"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Survey OUT</span></a>
+                </li>
+                <li class="nav-item"><a href="{{ url('admin/gateout') }}"><i class="fa fa-mail-reply"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Gate OUT</span></a>
+                </li>
+                <!-- Menu OUT -->
                 <?php }
                 if (array_search("9", $column) !== false) { ?>
-                    <!-- Menu FINANCE -->
-                    <li class=" navigation-header"><span data-i18n="nav.category.general">Finance</span><i
-                            class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
-                            data-original-title="General"></i>
-                    </li>
-                    <li class="nav-item"><a href="{{ url('admin/billing') }}"><i class="fa fa-tags"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Billing</span></a></li>
-                    <li class="nav-item"><a href="{{ url('admin/payment') }}"><i class="fa fa-money"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Payment</span></a></li>
-                    <!-- Menu FINANCE -->
+                <!-- Menu FINANCE -->
+                <li class=" navigation-header"><span data-i18n="nav.category.general">Finance</span><i
+                        class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
+                        data-original-title="General"></i>
+                </li>
+                <li class="nav-item"><a href="{{ url('admin/billing') }}"><i class="fa fa-tags"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Billing</span></a></li>
+                <li class="nav-item"><a href="{{ url('admin/payment') }}"><i class="fa fa-money"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Payment</span></a></li>
+                <!-- Menu FINANCE -->
                 <?php }
                 if (array_search("10", $column) !== false) { ?>
-                    <!-- Menu REPORT -->
-                    <li class=" navigation-header"><span data-i18n="nav.category.general">Report</span><i
-                            class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
-                            data-original-title="General"></i>
-                    </li>
-                    <li class="nav-item"><a href="{{ url('admin/reportin') }}"><i class="fa fa-file"></i><span
-                                class="menu-title" data-i18n="nav.changelog.main">Report Stock</span></a></li>
-                    <!-- <li class="nav-item"><a href="{{ url('admin/reportcustomer') }}"><i class="fa fa-file"></i><span
+                <!-- Menu REPORT -->
+                <li class=" navigation-header"><span data-i18n="nav.category.general">Report</span><i
+                        class="ft-more-horizontal ft-minus" data-toggle="tooltip" data-placement="right"
+                        data-original-title="General"></i>
+                </li>
+                <li class="nav-item"><a href="{{ url('admin/reportin') }}"><i class="fa fa-file"></i><span
+                            class="menu-title" data-i18n="nav.changelog.main">Report Stock</span></a></li>
+                <!-- <li class="nav-item"><a href="{{ url('admin/reportcustomer') }}"><i class="fa fa-file"></i><span
                             class="menu-title" data-i18n="nav.changelog.main">Report by Customer</span></a></li> -->
-                    <!-- Menu REPORT -->
+                <!-- Menu REPORT -->
                 <?php } ?>
 
 

@@ -24,7 +24,12 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Jalankan setiap 3 jam, tepat menit 00, pakai zona WIB
+        $schedule->command('report:surveyin:send')
+            ->cron('0 */3 * * *')
+            ->timezone('Asia/Jakarta')
+            ->withoutOverlapping()
+            ->onOneServer(); // jika pakai multi-instance
     }
 
     /**
@@ -34,7 +39,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands()
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

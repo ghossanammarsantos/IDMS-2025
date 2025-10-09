@@ -45,6 +45,7 @@
                                                 <thead class="thead-dark">
                                                     <tr>
                                                         <th>No. Container</th>
+                                                        <th>No. BLDO</th>
                                                         <th>Waktu Gate Out</th>
                                                         <th>PIC</th>
                                                     </tr>
@@ -53,6 +54,7 @@
                                                     @foreach ($gateout_list as $data)
                                                         <tr>
                                                             <td>{{ $data->no_container }}</td>
+                                                            <td>{{ $data->no_bldo }}</td>
                                                             <td>{{ $data->gateout_time }}</td>
                                                             <td>{{ $data->pic_gateout }}</td>
                                                         </tr>

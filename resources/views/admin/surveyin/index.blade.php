@@ -31,7 +31,8 @@
                                                         <th>Kode Survey</th>
                                                         <th>No. Container</th>
                                                         <th>Ukuran Container</th>
-                                                        <th>Waktu Gate In</th>
+                                                        <th>Waktu Gate In (aktual)</th>
+                                                        <th>Waktu Gate In (input)</th>
                                                         <th>PIC Gate In</th>
                                                         <th>Status Container</th>
                                                         <th>Grade Container</th>
@@ -55,6 +56,7 @@
                                                             </td>
                                                             <td>{{ isset($data->gatein_time) ? $data->gatein_time : '-' }}
                                                             </td>
+                                                            <td>{{ isset($data->tanggal_in_depo) ? $data->tanggal_in_depo : '-' }}
                                                             <td>{{ isset($data->pic_gatein) ? $data->pic_gatein : '-' }}
                                                             </td>
                                                             <td>{{ $data->status_container }}</td>
@@ -73,6 +75,13 @@
                                                                     <a class="fa fa-print"
                                                                         href="{{ route('surveyin.cetak_eir', ['kode_survey' => $data->kode_survey]) }}">
                                                                         Cetak EIR
+                                                                    </a>
+                                                                </button>
+
+                                                                <button class="btn btn-primary btn-sm ml-1">
+                                                                    <a class="fa fa-edit"
+                                                                        href="{{ route('surveyin.edit', ['kode_survey' => $data->kode_survey]) }}">
+                                                                        Edit
                                                                     </a>
                                                                 </button>
                                                             </td>
