@@ -104,6 +104,9 @@ Route::middleware(['auth', 'role:administrator'])->group(function () {
     Route::get('/admin/surveyin/create', 'SurveyInController@create')->name('surveyin.create');
     Route::post('/admin/surveyin', 'SurveyInController@store_detail')->name('surveyin.store_detail');
     Route::get('/admin/surveyin/cetak_eir/{kode_survey}', 'SurveyInController@cetak_eir')->name('surveyin.cetak_eir');
+    Route::get('/admin/surveyin/{kode_survey}/edit', 'SurveyInController@edit')->name('surveyin.edit');
+    Route::put('/admin/surveyin/{kode_survey}/update', 'SurveyInController@update')->name('surveyin.update');
+
 
     // Survey Out
     Route::get('/admin/surveyout', 'SurveyOutController@index')->name('surveyout.index');
@@ -158,6 +161,8 @@ Route::middleware(['auth', 'role:surveyorin'])->group(function () {
     Route::get('/admin/surveyin/create', 'SurveyInController@create')->name('surveyin.create');
     Route::post('/admin/surveyin', 'SurveyInController@store_detail')->name('surveyin.store_detail');
     Route::get('/admin/surveyin/cetak_eir/{kode_survey}', 'SurveyInController@cetak_eir')->name('surveyin.cetak_eir');
+    Route::get('/admin/surveyin/{kode_survey}/edit', 'SurveyInController@edit')->name('surveyin.edit');
+    Route::put('/admin/surveyin/{kode_survey}/update', 'SurveyInController@update')->name('surveyin.update');
 });
 
 Route::middleware(['auth', 'role:surveyorout'])->group(function () {
@@ -252,6 +257,8 @@ Route::get('/admin/surveyin', 'SurveyInController@index')->name('surveyin.index'
 Route::get('/admin/surveyin/create', 'SurveyInController@create')->name('surveyin.create');
 Route::post('/admin/surveyin', 'SurveyInController@store_detail')->name('surveyin.store_detail');
 Route::get('/admin/surveyin/cetak_eir/{kode_survey}', 'SurveyInController@cetak_eir')->name('surveyin.cetak_eir');
+Route::get('/admin/surveyin/{kode_survey}/edit', 'SurveyInController@edit')->name('surveyin.edit');
+Route::put('/admin/surveyin/{kode_survey}/update', 'SurveyInController@update')->name('surveyin.update');
 
 // Survey Out
 Route::get('/admin/surveyout', 'SurveyOutController@index')->name('surveyout.index');
@@ -295,6 +302,8 @@ Route::get('/admin/gateout/select2-containers', 'GateoutController@select2Contai
 
 // Report In
 Route::get('/admin/reportin', 'ReportinController@index')->name('reportin.index');
+Route::get('/admin/reportin/export', 'ReportinController@exportSurveyInPerDay')->name('reportin.export');
+Route::post('/admin/reportin/filter', 'ReportinController@filter')->name('reportin.filter');
 
 // Report By Customer
 Route::get('/admin/reportcustomer', 'ReportcustomerController@index')->name('reportcustomer.index');

@@ -168,10 +168,26 @@ class SurveyInController extends Controller
         $namaTrucking = $request->input('nama_trucking');
         $no_truck     = $request->input('no_truck');
         $driver       = $request->input('driver');
-        $sizze        = $request->input('sizze');       // sesuai Blade
+        $sizze        = $request->input('sizze');
         $tare         = $request->input('tare');
         $payload      = $request->input('payload');
-        $max_gross    = $request->input('max_gross');   // disimpan ke kolom 'maxgross'
+        $max_gross    = $request->input('max_gross');
+        $tanggal_in_depo = $request->input('tanggal_in_depo');
+
+        // ubah ke format Oracle timestamp
+        if ($tanggal_in_depo) {
+            try {
+                // ubah "2025-10-07T13:37" → "2025-10-07 13:37:00"
+                $formatted = Carbon::parse($tanggal_in_depo)->format('Y-m-d H:i:s');
+
+                // buat ekspresi SQL aman untuk Oracle
+                $tanggal_in_depo_sql = DB::raw("TO_TIMESTAMP('{$formatted}', 'YYYY-MM-DD HH24:MI:SS')");
+            } catch (\Exception $e) {
+                $tanggal_in_depo_sql = null; // fallback kalau parsing gagal
+            }
+        } else {
+            $tanggal_in_depo_sql = null;
+        }
 
         // Upload files
         $bukti_photo_paths = [];
@@ -246,6 +262,7 @@ class SurveyInController extends Controller
                 'tare'             => $tare,
                 'payload'          => $payload,
                 'maxgross'         => $max_gross,
+                'tanggal_in_depo'  => $tanggal_in_depo_sql,
             ]);
 
             // Update ann_import → CLOSE + timestamp
@@ -342,8 +359,236 @@ class SurveyInController extends Controller
 
 
     public function show($id) {}
-    public function edit($id) {}
-    public function update(Request $request, $id) {}
+
+
+    public function edit($kode_survey)
+    {
+        // Anggap $id = kode_survey
+        $survey = DB::table('surveyin')->where('kode_survey', $kode_survey)->first();
+        if (!$survey) {
+            return redirect()->route('surveyin.index')->with('error', 'Data Survey tidak ditemukan');
+        }
+        // Dataset dropdown (sama seperti create)
+        $tarif_list          = DB::table('tarif_depo')->get();
+        $tarif_lolo_list     = DB::table('tarif_depo')->where('grup', 'LOLO')->get();
+        $tarif_wash_list     = DB::table('tarif_depo')->where('grup', 'WASH')->get();
+        $tarif_sweeping_list = DB::table('tarif_depo')->where('grup', 'SWEEPING')->get();
+
+        $component = DB::table('cedex')->where('grup', 'Component')->get();
+        $damage    = DB::table('cedex')->where('grup', 'Damage')->get();
+        $repair    = DB::table('cedex')->where('grup', 'Repair')->get();
+
+        // Gate in helper (untuk tampilan info saja)
+        $gate_in  = DB::table('ann_import')
+            ->join('gate_in', 'ann_import.no_container', '=', 'gate_in.no_container')
+            ->select('ann_import.no_container', 'ann_import.no_bldo', 'gate_in.size_type')
+            ->get();
+
+        // Yard
+        $blocks  = DB::table('yard')->select('block')->distinct()->get();
+        $maxSlot = DB::table('yard')->max('slot');
+        $maxRow  = DB::table('yard')->max('row2');
+
+        $occupiedSlots = DB::table('surveyin')->select('block', 'slot')->distinct()->get()
+            ->keyBy(fn($i) => $i->block . '_' . $i->slot);
+        $occupiedRows  = DB::table('surveyin')->select('block', 'slot', 'row2')->distinct()->get()
+            ->keyBy(fn($i) => $i->block . '_' . $i->slot . '_' . $i->row2);
+        $occupiedTiers = DB::table('surveyin')->select('block', 'slot', 'row2', 'tier')->distinct()->get()
+            ->keyBy(fn($i) => $i->block . '_' . $i->slot . '_' . $i->row2 . '_' . $i->tier);
+
+        // Prefill kegiatan (string → array)
+        $kegiatanSelected = array_map('trim', array_filter(explode(',', (string) $survey->kegiatan)));
+
+        return view('admin.surveyin.edit', compact(
+            'survey',
+            'tarif_list',
+            'tarif_lolo_list',
+            'tarif_wash_list',
+            'tarif_sweeping_list',
+            'gate_in',
+            'component',
+            'damage',
+            'repair',
+            'blocks',
+            'maxSlot',
+            'maxRow',
+            'occupiedTiers',
+            'occupiedSlots',
+            'occupiedRows',
+            'kegiatanSelected'
+        ));
+    }
+
+    public function update(Request $request, $kode_survey)
+    {
+        // Anggap $id = kode_survey
+        $survey = DB::table('surveyin')->where('kode_survey', $kode_survey)->first();
+        if (!$survey) {
+            return redirect()->route('surveyin.index')->with('error', 'Data Survey tidak ditemukan');
+        }
+        // dd($request->all(), $survey);
+        // // Validasi (semua field surveyin)
+        // $validated = $request->validate([
+        //     'status_container' => 'required|in:AV,DM',
+        //     'grade_container'  => 'nullable|in:A,B,C,D,E',
+
+        //     // Bisa diisi saat edit kalau sebelumnya NULL
+        //     'no_bldo'          => 'nullable|string',
+
+        //     // Kegiatan
+        //     'kegiatan1'        => 'array',
+        //     'kegiatan1.*'      => 'string',
+        //     'kegiatan2'        => 'array',
+        //     'kegiatan2.*'      => 'string',
+        //     'kegiatan3'        => 'array',
+        //     'kegiatan3.*'      => 'string',
+
+        //     // Yard
+        //     'block'            => 'nullable|string',
+        //     'slot'             => 'nullable|string',
+        //     'row2'             => 'nullable|string',
+        //     'tier'             => 'nullable|string',
+
+        //     // Teknis
+        //     'nama_trucking'    => 'nullable|string',
+        //     'no_truck'         => 'nullable|string',
+        //     'driver'           => 'nullable|string',
+        //     'sizze'            => 'nullable|string',
+        //     'tare'             => 'nullable|string',
+        //     'payload'          => 'nullable|string',
+        //     'max_gross'        => 'nullable|string',
+
+        //     // Waktu
+        //     'tanggal_in_depo'  => 'nullable|date',
+
+        //     // Files
+        //     'foto_surat_jalan' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+
+        //     // bukti_photo[posisi][] (multi file per posisi)
+        //     'bukti_photo'      => 'array',
+        //     'bukti_photo.*'    => 'array',
+        //     'bukti_photo.*.*'  => 'file|mimes:jpg,jpeg,png|max:4096',
+
+        //     // hapus foto lama
+        //     'bukti_remove'     => 'array',
+        //     'bukti_remove.*'   => 'array',
+        // ]);
+
+        $nullIfEmpty = fn($v) => ($v === '' ? null : $v);
+
+        // Gabung kegiatan 1+2+3
+        $kegiatan = array_merge(
+            $request->input('kegiatan1', []),
+            $request->input('kegiatan2', []),
+            $request->input('kegiatan3', [])
+        );
+        $kegiatanString = implode(', ', $kegiatan);
+
+        $tanggal_in_depo_sql = null;
+        if ($request->filled('tanggal_in_depo')) {
+            try {
+                $fmt = \Illuminate\Support\Carbon::createFromFormat('Y-m-d\TH:i', $request->input('tanggal_in_depo'))
+                    ->format('Y-m-d H:i:s');
+                $tanggal_in_depo_sql = DB::raw("TO_TIMESTAMP('{$fmt}', 'YYYY-MM-DD HH24:MI:SS')");
+            } catch (\Throwable $e) {
+                // biarkan null → tidak menimpa
+                $tanggal_in_depo_sql = null;
+            }
+        }
+
+        // Foto surat jalan (replace jika upload baru)
+        $pathSuratJalan = $survey->foto_surat_jalan;
+        if ($request->hasFile('foto_surat_jalan')) {
+            $file = $request->file('foto_surat_jalan');
+            $name = Str::random(40) . '.' . strtolower($file->getClientOriginalExtension());
+            $dest = public_path('surat_jalan_photo');
+            if (!is_dir($dest)) @mkdir($dest, 0777, true);
+            $file->move($dest, $name);
+            $pathSuratJalan = 'surat_jalan_photo/' . $name;
+        }
+
+        // Merge bukti_photo lama + hapus terpilih + tambah baru
+        $currentBukti = json_decode($survey->bukti_photo ?? '[]', true);
+        if (!is_array($currentBukti)) $currentBukti = [];
+
+        // Hapus yang ditandai
+        $toRemove = $request->input('bukti_remove', []);
+        foreach ($toRemove as $pos => $paths) {
+            if (isset($currentBukti[$pos])) {
+                $currentBukti[$pos] = array_values(array_diff($currentBukti[$pos], $paths));
+                // (opsional) hapus file fisik:
+                // foreach ($paths as $p) { @unlink(public_path($p)); }
+                if (empty($currentBukti[$pos])) unset($currentBukti[$pos]);
+            }
+        }
+
+        // Tambah file baru
+        if ($request->hasFile('bukti_photo')) {
+            foreach ($request->file('bukti_photo') as $posisi => $files) {
+                if (is_null($files)) continue;
+                $files = is_array($files) ? $files : [$files];
+                foreach ($files as $f) {
+                    if (!$f || !$f->isValid()) continue;
+                    $name = (string) Str::uuid() . '.' . strtolower($f->getClientOriginalExtension());
+                    $dest = public_path("surveyin_photo/{$kode_survey}/{$posisi}");
+                    if (!is_dir($dest)) @mkdir($dest, 0777, true);
+                    $f->move($dest, $name);
+                    $currentBukti[$posisi][] = "surveyin_photo/{$kode_survey}/{$posisi}/{$name}";
+                }
+            }
+        }
+        // Rapikan index & buang posisi kosong
+        foreach ($currentBukti as $pos => $arr) {
+            $arr = array_values(array_filter($arr));
+            if (empty($arr)) unset($currentBukti[$pos]);
+            else $currentBukti[$pos] = $arr;
+        }
+
+        DB::beginTransaction();
+        try {
+            DB::table('surveyin')->where('kode_survey', $kode_survey)->update([
+                'status_container'  => $request->input('status_container'),
+                'grade_container'   => $nullIfEmpty($request->input('grade_container')),
+                'kegiatan'          => $kegiatanString,
+
+                // Teknis
+                'no_truck'          => $nullIfEmpty($request->input('no_truck')),
+                'driver'            => $nullIfEmpty($request->input('driver')),
+                'nama_trucking'     => $nullIfEmpty($request->input('nama_trucking')),
+                'sizze'             => $nullIfEmpty($request->input('sizze')),
+                'tare'              => $nullIfEmpty($request->input('tare')),
+                'payload'           => $nullIfEmpty($request->input('payload')),
+                'maxgross'          => $nullIfEmpty($request->input('max_gross')),
+                'foto_surat_jalan'  => $pathSuratJalan,
+                'tanggal_in_depo'   => $tanggal_in_depo_sql ?? $survey->tanggal_in_depo,
+
+                // Yard
+                'block'             => $nullIfEmpty($request->input('block')),
+                'slot'              => $nullIfEmpty($request->input('slot')),
+                'row2'              => $nullIfEmpty($request->input('row2')),
+                'tier'              => $nullIfEmpty($request->input('tier')),
+
+                // no_bldo → update jika dikirim (agar bisa isi ketika sebelumnya NULL)
+                'no_bldo'           => $request->has('no_bldo')
+                    ? $nullIfEmpty($request->input('no_bldo'))
+                    : $survey->no_bldo,
+
+                'bukti_photo'       => json_encode($currentBukti),
+                'pic'               => (Auth::check() ? Auth::user()->name : 'SYSTEM'),
+            ]);
+
+            DB::commit();
+            return redirect()->route('surveyin.index')->with('success', 'Data Survey berhasil diperbarui');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            // return json_encode([
+            //     'data' => $request->all(),
+            //     'error' => $e->getMessage()
+            // ]);
+            return back()->with('error', 'Gagal update Survey: ' . $e->getMessage())->withInput();
+        }
+    }
+
     public function destroy($id) {}
 
     /** Helper: generate kode running EIRI/EOR berbasis record terakhir */

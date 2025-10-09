@@ -100,7 +100,6 @@ class RegisterController extends Controller
             }
         }
 
-        // Redirect to the dashboard route after registration
-        return Redirect::route('/dashboard');
+        return Redirect::route('auth.userlist')->with('success', 'User registered successfully. Please login.');
     }
 }
