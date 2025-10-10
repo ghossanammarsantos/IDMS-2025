@@ -88,11 +88,14 @@ class GenerateCodeco extends Command
         $msgRf = $icRef . '001';                // O2505091344001
         $docNo = $now->format('ymdHis');        // 250509134413
 
+        // default voyage dari CLI; nanti akan dioverride oleh ANN_IMPORT jika tersedia
+        $headerVoy = $this->option('voyage');
+
         $header = [
             'sender'          => $this->option('sender'),
             'recipient'       => $this->option('recipient'),
             'carrier'         => $this->option('carrier'),
-            'voyage'          => $this->option('voyage'),
+            'voyage'          => $headerVoy,
             'created_at'      => $now,
             'interchange_ref' => $icRef,
             'message_ref'     => $msgRf,
@@ -107,51 +110,61 @@ class GenerateCodeco extends Command
         $dateStr    = $day->format('Y-m-d');
 
         if ($event === 'IN') {
-            // GATE IN: ambil langsung dari GATE_IN; join SURVEYIN untuk ambil weight (optional)
+            // GATE IN: join SURVEYIN utk weight & status/grade; join ANN_IMPORT utk consignee & voyage
             $rows = DB::connection($connection)
                 ->table(DB::raw("$schema.GATE_IN g"))
                 ->leftJoin(DB::raw("$schema.SURVEYIN s"), DB::raw("s.NO_CONTAINER"), '=', DB::raw("g.NO_CONTAINER"))
+                ->leftJoin(DB::raw("$schema.ANN_IMPORT a"), DB::raw("a.NO_BLDO"), '=', DB::raw("g.NO_BLDO"))
                 ->whereRaw("TRUNC(g.GATEIN_TIME) = TO_DATE(?, 'YYYY-MM-DD')", [$dateStr])
                 ->selectRaw("
-                    g.NO_CONTAINER   AS container_no,
-                    g.SIZE_TYPE      AS iso,         -- dari GATE_IN
-                    NULL             AS fe_status,
-                    g.NO_BLDO        AS booking_no,
-                    g.GATEIN_TIME    AS gate_time,
-                    NULL             AS gross_weight, -- tidak ada di GATE_IN
-                    s.PAYLOAD        AS payload,     -- dari SURVEYIN
-                    s.TARE           AS tare,        -- dari SURVEYIN
-                    s.MAXGROSS       AS maxgross,    -- dari SURVEYIN
-                    NULL             AS damage_code,
-                    NULL             AS feeder_voy,
-                    NULL             AS vessel_call,
-                    NULL             AS consignee
+                    g.NO_CONTAINER          AS container_no,
+                    g.SIZE_TYPE             AS iso,           -- dari GATE_IN
+                    NULL                    AS fe_status,
+                    g.NO_BLDO               AS booking_no,
+                    g.GATEIN_TIME           AS gate_time,
+                    NULL                    AS gross_weight,  -- tidak ada di GATE_IN
+                    s.PAYLOAD               AS payload,       -- dari SURVEYIN
+                    s.TARE                  AS tare,          -- dari SURVEYIN
+                    s.MAXGROSS              AS maxgross,      -- dari SURVEYIN
+                    s.STATUS_CONTAINER      AS status_container,
+                    s.GRADE_CONTAINER       AS grade_container,
+                    a.CONSIGNEE             AS consignee,     -- dari ANN_IMPORT
+                    a.VOYAGE                AS voyage         -- dari ANN_IMPORT
                 ")
                 ->orderBy(DB::raw("g.GATEIN_TIME"))
                 ->get();
         } else {
-            // GATE OUT: ISO diambil via SURVEYIN; weight juga dari SURVEYIN
+            // GATE OUT: ISO & weight & status/grade via SURVEYIN; consignee & voyage via ANN_IMPORT
             $rows = DB::connection($connection)
                 ->table(DB::raw("$schema.GATE_OUT g"))
                 ->leftJoin(DB::raw("$schema.SURVEYIN s"), DB::raw("s.NO_CONTAINER"), '=', DB::raw("g.NO_CONTAINER"))
+                ->leftJoin(DB::raw("$schema.ANN_IMPORT a"), DB::raw("a.NO_BLDO"), '=', DB::raw("g.NO_BLDO"))
                 ->whereRaw("TRUNC(g.GATEOUT_TIME) = TO_DATE(?, 'YYYY-MM-DD')", [$dateStr])
                 ->selectRaw("
-                    g.NO_CONTAINER   AS container_no,
-                    s.SIZE_TYPE      AS iso,         -- via SURVEYIN
-                    NULL             AS fe_status,
-                    g.NO_BLDO        AS booking_no,
-                    g.GATEOUT_TIME   AS gate_time,
-                    NULL             AS gross_weight, -- tidak ada di GATE_OUT
-                    s.PAYLOAD        AS payload,     -- dari SURVEYIN
-                    s.TARE           AS tare,        -- dari SURVEYIN
-                    s.MAXGROSS       AS maxgross,    -- dari SURVEYIN
-                    NULL             AS damage_code,
-                    NULL             AS feeder_voy,
-                    NULL             AS vessel_call,
-                    NULL             AS consignee
+                    g.NO_CONTAINER          AS container_no,
+                    s.SIZE_TYPE             AS iso,           -- via SURVEYIN
+                    NULL                    AS fe_status,
+                    g.NO_BLDO               AS booking_no,
+                    g.GATEOUT_TIME          AS gate_time,
+                    NULL                    AS gross_weight,  -- tidak ada di GATE_OUT
+                    s.PAYLOAD               AS payload,       -- dari SURVEYIN
+                    s.TARE                  AS tare,          -- dari SURVEYIN
+                    s.MAXGROSS              AS maxgross,      -- dari SURVEYIN
+                    s.STATUS_CONTAINER      AS status_container,
+                    s.GRADE_CONTAINER       AS grade_container,
+                    a.CONSIGNEE             AS consignee,     -- dari ANN_IMPORT
+                    a.VOYAGE                AS voyage         -- dari ANN_IMPORT
                 ")
                 ->orderBy(DB::raw("g.GATEOUT_TIME"))
                 ->get();
+        }
+
+        /* Override voyage header dari ANN_IMPORT (ambil yang pertama tidak kosong) */
+        foreach ($rows as $r0) {
+            if (!empty($r0->voyage)) {
+                $header['voyage'] = $r0->voyage;
+                break;
+            }
         }
 
         /* ============================
@@ -162,7 +175,7 @@ class GenerateCodeco extends Command
 
         $containers = [];
         foreach ($rows as $r) {
-            // Status EDIFACT: default Full=4 (belum ada sumber FE di tabel ini)
+            // Status EDIFACT (F/E): default Full=4 (belum ada sumber FE khusus)
             $status = '4';
 
             // ISO: normalisasi dari size/type operasional -> ISO 4-digit
@@ -181,18 +194,18 @@ class GenerateCodeco extends Command
             $eventDt = Carbon::parse($r->gate_time, $tz);
 
             $containers[] = [
-                'container_no' => $cn,
-                'iso'          => $iso,
-                'status'       => $status,
-                'booking_no'   => $r->booking_no ?: '',
-                'event_dt'     => $eventDt,
-                'port_code'    => $port,
-                'depot_code'   => $depot,
-                'gross_weight' => $gross,           // <= ini yang memicu MEA di builder jika tidak null
-                'damage_code'  => $r->damage_code ?: '1',
-                'feeder_voy'   => $r->feeder_voy ?: '3',
-                'vessel_call'  => $r->vessel_call ?: '',
-                'consignee'    => $r->consignee ?: null,
+                'container_no'     => $cn,
+                'iso'              => $iso,
+                'status'           => $status,
+                'booking_no'       => $r->booking_no ?: '',
+                'event_dt'         => $eventDt,
+                'port_code'        => $port,
+                'depot_code'       => $depot,
+                'gross_weight'     => $gross, // => MEA bila tidak null
+                'status_container' => $r->status_container ? strtoupper($r->status_container) : '',
+                'grade_container'  => $r->grade_container ? strtoupper($r->grade_container) : '',
+                'voyage'           => $r->voyage ?: '',       // untuk TDT per-container
+                'consignee'        => $r->consignee ?: null,  // NAD+CZ jika ada
             ];
         }
 

@@ -28,23 +28,25 @@ class CodecoBuilder
     }
 
     /**
-     * Bangun 1 interchange berisi 1 message CODECO (format contoh di Word/TXT kamu).
-     * $header keys (wajib):
+     * Bangun 1 interchange berisi 1 message CODECO.
+     * $header:
      * - sender, recipient, carrier, voyage, created_at(Carbon), interchange_ref, message_ref, document_no
-     * $containers: array item:
-     * - container_no, iso, status('4' full, '1' empty), booking_no|null, event_dt(Carbon),
-     *   port_code, depot_code, gross_weight|null, damage_code('1' default), feeder_voy, vessel_call, consignee|null
+     * $containers[]:
+     * - container_no, iso, status('4'/'1'), booking_no, event_dt(Carbon),
+     *   port_code, depot_code, gross_weight|null,
+     *   status_container, grade_container, voyage, consignee|null
      */
     public function build(array $header, array $containers): string
     {
         $created = $header['created_at'];
         [$yymmdd, $hhmm] = $this->yymmddHm($created);
 
-        $S = $this->seg;
+        // **satu segmen satu baris**
+        $S = $this->seg . PHP_EOL;
         $E = $this->elm;
         $C = $this->cmp;
 
-        // === UNB (sesuai contoh: ada control reference di belakang)
+        // === UNB
         $edi  = "UNB{$E}UNOA:1{$E}{$this->esc($header['sender'])}{$E}{$this->esc($header['recipient'])}{$E}{$yymmdd}:{$hhmm}{$E}{$this->esc($header['interchange_ref'])}{$S}";
 
         // === UNH
@@ -54,9 +56,10 @@ class CodecoBuilder
         // BGM
         $msg[] = "BGM{$E}36{$E}{$this->esc($header['document_no'])}{$E}9{$S}";
 
-        // TDT main (sea)
-        $voyage = $this->esc($header['voyage'] ?? '1');
-        $msg[] = "TDT{$E}20{$E}{$E}{$voyage}{$E}{$E}:172:87{$E}{$E}{$E}:146::{$S}";
+        // TDT header (pakai voyage dari ANN_IMPORT jika ada)
+        $voyageHdr = $this->esc($header['voyage'] ?? '');
+        // format: TDT+20++(VOYAGE)++:172:87+++:146::'
+        $msg[] = "TDT{$E}20{$E}{$E}{$voyageHdr}{$E}{$E}:172:87{$E}{$E}{$E}:146::{$S}";
 
         // NAD sender/recipient/carrier
         $msg[] = "NAD{$E}MS{$E}{$this->esc($header['sender'])}:160:87{$S}";
@@ -69,33 +72,43 @@ class CodecoBuilder
             $iso = strtoupper($this->esc($c['iso']));
             $st  = $this->esc($c['status'] ?? '4');
 
+            // EQD
             $msg[] = "EQD{$E}CN{$E}{$cn}{$E}{$iso}:102:5{$E}{$E}{$E}{$st}{$S}";
 
+            // RFF booking
             $booking = trim((string)($c['booking_no'] ?? ''));
             if ($booking !== '') {
                 $msg[] = "RFF{$E}BN:{$this->esc($booking)}{$S}";
             }
-            // kirim baris kosong juga (sesuai contoh kamu)
+            // baris RFF kosong (sesuai contoh)
             $msg[] = "RFF{$E}BN:{$S}";
 
+            // DTM 7
             $event = $c['event_dt'];
             $msg[] = "DTM{$E}7:{$this->yyyymmddHm($event)}:203{$S}";
 
+            // LOC (port & depot)
             $port  = strtoupper($this->esc($c['port_code']));
             $depot = strtoupper($this->esc($c['depot_code']));
             $msg[] = "LOC{$E}165{$E}{$port}:139:6{$E}{$depot}:STO:ZZZ{$S}";
 
+            // MEA (gross weight) kalau ada
             if (!empty($c['gross_weight'])) {
                 $gw = (int)$c['gross_weight'];
                 $msg[] = "MEA{$E}AAE{$E}G{$E}KGM:{$gw}{$S}";
             }
 
-            $msg[] = "FTX{$E}DAR{$E}{$E}{$this->esc($c['damage_code'] ?? '1')}{$S}";
+            // FTX DAR: gunakan STATUS_CONTAINER & GRADE_CONTAINER (bukan damage_code)
+            $sc = $this->esc($c['status_container'] ?? '');
+            $gc = $this->esc($c['grade_container'] ?? '');
+            $msg[] = "FTX{$E}DAR{$E}{$sc}{$E}{$gc}{$S}";
 
-            $fv = $this->esc($c['feeder_voy'] ?? '3');
-            $vc = $this->esc($c['vessel_call'] ?? '');
-            $msg[] = "TDT{$E}1{$E}{$E}{$fv}{$E}{$E}{$E}{$E}{$E}{$vc}:146:ZZZ{$S}";
+            // TDT per-kontainer (pakai VOYAGE dari ANN_IMPORT; DP3 di qualifier)
+            $voy = $this->esc($c['voyage'] ?? '');
+            // format: TDT+1++(VOYAGE)+++++:146:(DP3)'
+            $msg[] = "TDT{$E}1{$E}{$E}{$voy}{$E}{$E}{$E}{$E}{$E}:146:DP3{$S}";
 
+            // Consignee (jika ada)
             if (!empty($c['consignee'])) {
                 $msg[] = "NAD{$E}CZ{$E}{$E}{$E}{$this->esc($c['consignee'])}{$S}";
             }
@@ -109,7 +122,7 @@ class CodecoBuilder
         $msg[] = "UNT{$E}{$segmentCount}{$E}{$this->esc($header['message_ref'])}{$S}";
 
         // gabung message + UNZ
-        $edi .= implode('', $msg);
+        $edi = $edi . implode('', $msg);
         $edi .= "UNZ{$E}1{$E}{$this->esc($header['interchange_ref'])}{$S}";
 
         return $edi;
