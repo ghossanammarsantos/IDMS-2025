@@ -106,7 +106,7 @@ class GenerateCodeco extends Command
          * 1) AMBIL DATA DARI ORACLE
          * ============================ */
         $connection = 'oracle';
-        $schema     = 'C##IDMS2024';
+        $schema     = 'C##IDMSTEMP2025'; // sesuaikan dengan database.php
         $dateStr    = $day->format('Y-m-d');
 
         if ($event === 'IN') {
