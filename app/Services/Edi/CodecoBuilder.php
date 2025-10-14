@@ -6,125 +6,143 @@ use Carbon\Carbon;
 
 class CodecoBuilder
 {
-    private string $seg = "'";  // segment terminator
-    private string $elm = "+";  // data element separator
-    private string $cmp = ":";  // component data element separator
+    private $seg = "'";  // segment terminator
+    private $elm = "+";  // data element separator
+    private $cmp = ":";  // component data element separator
 
-    private function esc(?string $v): string
+    private function esc($s)
     {
-        $v = (string) $v;
-        $v = str_replace(["\r", "\n"], ' ', $v);
-        return str_replace($this->seg, ' ', trim($v));
+        $s = (string) $s;
+        return str_replace([$this->seg, $this->elm, $this->cmp], ['?\'', '?+', '?:'], $s);
     }
 
-    private function yymmddHm(Carbon $dt): array
+    private function yymmddHm(Carbon $dt)
     {
-        return [$dt->format('ymd'), $dt->format('Hi')]; // ex: 250509, 1630
+        return [$dt->format('ymd'), $dt->format('Hi')];
     }
 
-    private function yyyymmddHm(Carbon $dt): string
+    private function sanAlnum($s)
     {
-        return $dt->format('YmdHi'); // ex: 202505091527
+        $s = strtoupper((string) $s);
+        $s = str_replace(["\xEF\xBB\xBF", "\xE2\x80\x8B", "\xC2\xA0"], '', $s); // BOM/ZWSP/NBSP
+        $s = preg_replace('/[\x00-\x1F\x7F]/', '', $s);                          // control
+        return preg_replace('/[^A-Z0-9]/', '', $s);                               // keep A-Z0-9
+    }
+
+    private function fmtYmdHm203(Carbon $dt)
+    {
+        // 203 = YYYYMMDDHHMM
+        return $dt->format('YmdHi');
     }
 
     /**
-     * Bangun 1 interchange berisi 1 message CODECO.
-     * $header:
-     * - sender, recipient, carrier, voyage, created_at(Carbon), interchange_ref, message_ref, document_no
-     * $containers[]:
-     * - container_no, iso, status('4'/'1'), booking_no, event_dt(Carbon),
-     *   port_code, depot_code, gross_weight|null,
-     *   status_container, grade_container, voyage, consignee|null
+     * Build CODECO lengkap dengan UNB/UNZ sesuai dokumen.
+     * $header wajib: customer_code, voyage, created_at(Carbon), interchange_ref, message_ref, document_no
+     * $containers: array of arrays (sudah dimap di Command)
      */
     public function build(array $header, array $containers): string
     {
-        $created = $header['created_at'];
-        [$yymmdd, $hhmm] = $this->yymmddHm($created);
-
-        // **satu segmen satu baris**
-        $S = $this->seg . PHP_EOL;
+        $S = $this->seg;
         $E = $this->elm;
         $C = $this->cmp;
+        $out = [];
 
-        // === UNB
-        $edi  = "UNB{$E}UNOA:1{$E}{$this->esc($header['sender'])}{$E}{$this->esc($header['recipient'])}{$E}{$yymmdd}:{$hhmm}{$E}{$this->esc($header['interchange_ref'])}{$S}";
+        $created = $header['created_at'] instanceof Carbon ? $header['created_at'] : now('Asia/Jakarta');
+        [$yymmdd, $hhmm] = $this->yymmddHm($created);
 
-        // === UNH
-        $msg = [];
-        $msg[] = "UNH{$E}{$this->esc($header['message_ref'])}{$E}CODECO:D:95B:UN:ITG14{$S}";
+        $icRef   = $this->esc($header['interchange_ref']); // OyyMMddHHmm
+        $msgRef  = $this->esc($header['message_ref']);     // OyyMMddHHmm001
+        $docNo   = $this->esc($header['document_no']);     // YYMMDDHHMM + 3 digit
+        $voyHdr  = $this->sanAlnum($header['voyage'] ?? '');
+        $cust    = $this->sanAlnum($header['customer_code'] ?? 'HMM'); // default HMM jika kosong
 
-        // BGM
-        $msg[] = "BGM{$E}36{$E}{$this->esc($header['document_no'])}{$E}9{$S}";
+        // ===== UNB (interchange header)
+        // UNB+UNOA:1+TBMIDBTM+{CUSTOMER_CODE}+YYMMDD:HHMM+{ICREF}'
+        $out[] = "UNB{$E}UNOA:1{$E}TBMIDBTM{$E}{$cust}{$E}{$yymmdd}:{$hhmm}{$E}{$icRef}'";
 
-        // TDT header (pakai voyage dari ANN_IMPORT jika ada)
-        $voyageHdr = $this->esc($header['voyage'] ?? '');
-        // format: TDT+20++(VOYAGE)++:172:87+++:146::'
-        $msg[] = "TDT{$E}20{$E}{$E}{$voyageHdr}{$E}{$E}:172:87{$E}{$E}{$E}:146::{$S}";
+        // ===== UNH (start of message)
+        // UNH+{ICREF}001+CODECO:D:95B:UN:ITG14'
+        $idxUnh = count($out); // simpan index untuk hitung UNT nanti
+        $out[]  = "UNH{$E}{$msgRef}{$E}CODECO:D:95B:UN:ITG14'";
 
-        // NAD sender/recipient/carrier
-        $msg[] = "NAD{$E}MS{$E}{$this->esc($header['sender'])}:160:87{$S}";
-        $msg[] = "NAD{$E}MR{$E}{$this->esc($header['recipient'])}:160:87{$S}";
-        $msg[] = "NAD{$E}CF{$E}{$this->esc($header['carrier'])}:160:87{$S}";
+        // ===== BGM
+        // BGM+36+{DOCNO}+9'
+        $out[] = "BGM{$E}36{$E}{$docNo}{$E}9'";
 
-        // === Loop container
+        // ===== TDT+20
+        // TDT+20++{VOYAGE}++:172:87+++:146::'
+        $out[] = "TDT{$E}20{$E}{$E}{$voyHdr}{$E}{$E}:172:87{$E}{$E}{$E}:146::'";
+
+        // ===== NAD (MS/MR/CF)
+        $out[] = "NAD{$E}MS{$E}TBMIDBTM:160:87'";
+        $out[] = "NAD{$E}MR{$E}{$cust}:160:87'";
+        $out[] = "NAD{$E}CF{$E}{$cust}:160:87'";
+
+        // ===== Loop per container
         foreach ($containers as $c) {
-            $cn  = strtoupper($this->esc($c['container_no']));
-            $iso = strtoupper($this->esc($c['iso']));
-            $st  = $this->esc($c['status'] ?? '4');
+            $cn       = $this->sanAlnum($c['container_no'] ?? '');
+            $iso      = $this->esc(strtoupper($c['iso'] ?? ''));
+            $voyPer   = $this->sanAlnum($c['voyage'] ?? $voyHdr);
+            $booking  = (string) ($c['booking_no'] ?? '');
+            $gateDt   = $c['event_dt'] instanceof Carbon ? $c['event_dt'] : Carbon::parse($c['event_dt'] ?? $created);
+            $gateYmdH = $this->fmtYmdHm203($gateDt);
+            $gross    = $c['gross_weight'] ?? ($c['payload'] ?? null);
+            $statusC  = $this->sanAlnum($c['status_container'] ?? '');
+            $gradeC   = $this->sanAlnum($c['grade_container']  ?? '');
+            $cons     = $this->esc($c['consignee'] ?? '');
+            $shipId   = $this->sanAlnum($c['ship_id'] ?? ''); // opsional; jika kosong tetap valid
 
-            // EQD
-            $msg[] = "EQD{$E}CN{$E}{$cn}{$E}{$iso}:102:5{$E}{$E}{$E}{$st}{$S}";
+            // 1) EQD+CN+{NO_CONTAINER}+{SIZE_TYPE}:102:5+++4'
+            $out[] = "EQD{$E}CN{$E}{$cn}{$E}{$iso}{$C}102{$C}5{$E}{$E}{$E}4'";
 
-            // RFF booking
-            $booking = trim((string)($c['booking_no'] ?? ''));
+            // 2) RFF+BN:{BOOKING}' atau RFF+BN:' jika kosong
             if ($booking !== '') {
-                $msg[] = "RFF{$E}BN:{$this->esc($booking)}{$S}";
-            }
-            // baris RFF kosong (sesuai contoh)
-            $msg[] = "RFF{$E}BN:{$S}";
-
-            // DTM 7
-            $event = $c['event_dt'];
-            $msg[] = "DTM{$E}7:{$this->yyyymmddHm($event)}:203{$S}";
-
-            // LOC (port & depot)
-            $port  = strtoupper($this->esc($c['port_code']));
-            $depot = strtoupper($this->esc($c['depot_code']));
-            $msg[] = "LOC{$E}165{$E}{$port}:139:6{$E}{$depot}:STO:ZZZ{$S}";
-
-            // MEA (gross weight) kalau ada
-            if (!empty($c['gross_weight'])) {
-                $gw = (int)$c['gross_weight'];
-                $msg[] = "MEA{$E}AAE{$E}G{$E}KGM:{$gw}{$S}";
+                $out[] = "RFF{$E}BN:{$this->esc($booking)}'";
+            } else {
+                $out[] = "RFF{$E}BN:'";
             }
 
-            // FTX DAR: gunakan STATUS_CONTAINER & GRADE_CONTAINER (bukan damage_code)
-            $sc = $this->esc($c['status_container'] ?? '');
-            $gc = $this->esc($c['grade_container'] ?? '');
-            $msg[] = "FTX{$E}DAR{$E}{$sc}{$E}{$gc}{$S}";
+            // 3) DTM+7:{YYYYMMDDHHMM}:203'   ← FIX: pakai ':' setelah '7'
+            $out[] = "DTM{$E}7{$C}{$gateYmdH}{$C}203'";
 
-            // TDT per-kontainer (pakai VOYAGE dari ANN_IMPORT; DP3 di qualifier)
-            $voy = $this->esc($c['voyage'] ?? '');
-            // format: TDT+1++(VOYAGE)+++++:146:(DP3)'
-            $msg[] = "TDT{$E}1{$E}{$E}{$voy}{$E}{$E}{$E}{$E}{$E}:146:DP3{$S}";
+            // 4) LOC+165+IDBTM:139:6+TBMIDBTM:STO:ZZZ'
+            $out[] = "LOC{$E}165{$E}IDBTM:139:6{$E}TBMIDBTM:STO:ZZZ'";
 
-            // Consignee (jika ada)
-            if (!empty($c['consignee'])) {
-                $msg[] = "NAD{$E}CZ{$E}{$E}{$E}{$this->esc($c['consignee'])}{$S}";
+            // 5) MEA+AAE+G+KGM:{GROSS}'
+            if (!empty($gross)) {
+                $grossVal = preg_replace('/[^0-9]/', '', (string) $gross);
+                if ($grossVal !== '') {
+                    $out[] = "MEA{$E}AAE{$E}G{$E}KGM:{$grossVal}'";
+                }
             }
+
+            // 6) FTX+DAR+{STATUS_CONTAINER}+{GRADE_CONTAINER}'
+            if ($statusC !== '' || $gradeC !== '') {
+                $out[] = "FTX{$E}DAR{$E}{$statusC}{$E}{$gradeC}'";
+            }
+
+            // 7) TDT+1++{VOYAGE}+++++{SHIP_ID}:146:DP3'  ← FIX: DP3 jadi QUALIFIER (komponen ke-3)
+            $out[] = "TDT{$E}1{$E}{$E}{$voyPer}{$E}{$E}{$E}{$E}{$E}{$shipId}:146:DP3'";
+
+            // 8) NAD+CZ+++{CONSIGNEE}'
+            $out[] = "NAD{$E}CZ{$E}{$E}{$E}{$cons}'";
         }
 
-        // CNT: jumlah container
-        $msg[] = "CNT{$E}16:" . count($containers) . $S;
+        // CNT+16:{TOTAL}'  ← FIX: pakai ':'
+        $cnt = count($containers);
+        $out[] = "CNT{$E}16{$C}{$cnt}'";
 
-        // UNT: jumlah segmen dari UNH..UNT (inklusif)
-        $segmentCount = count($msg) + 1;
-        $msg[] = "UNT{$E}{$segmentCount}{$E}{$this->esc($header['message_ref'])}{$S}";
+        // UNT: jumlah segmen dari UNH..UNT (termasuk UNH dan UNT)
+        // saat ini $idxUnh adalah index elemen UNH (0-based)
+        // total segmen dari UNH sampai baris terakhir out: (count($out) - $idxUnh)
+        // tambah 1 untuk UNT itu sendiri
+        $segmentsBetween = count($out) - $idxUnh; // UNH..(CNT)
+        $untCount = $segmentsBetween + 1;         // + UNT
+        $out[] = "UNT{$E}{$untCount}{$E}{$msgRef}'";
 
-        // gabung message + UNZ
-        $edi = $edi . implode('', $msg);
-        $edi .= "UNZ{$E}1{$E}{$this->esc($header['interchange_ref'])}{$S}";
+        // UNZ+1+{ICREF}'
+        $out[] = "UNZ{$E}1{$E}{$icRef}'";
 
-        return $edi;
+        return implode("\n", $out) . "\n";
     }
 }
