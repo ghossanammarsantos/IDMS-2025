@@ -51,7 +51,7 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
+            'url' => env('APP_URL') . '/storage',
             'visibility' => 'public',
         ],
 
@@ -62,6 +62,16 @@ return [
             'region' => env('AWS_DEFAULT_REGION'),
             'bucket' => env('AWS_BUCKET'),
             'url' => env('AWS_URL'),
+        ],
+
+        'sftp_hmm' => [
+            'driver'   => 'sftp', // Flysystem v1 adapter
+            'host'     => env('SFTP_HMM_HOST'),
+            'port'     => (int) env('SFTP_HMM_PORT', 22),
+            'username' => env('SFTP_Hmm_USERNAME', env('SFTP_HMM_USERNAME')), // fallback
+            'password' => env('SFTP_HMM_PASSWORD'),
+            'root'     => env('SFTP_HMM_ROOT', '/'),
+            'timeout'  => (int) env('SFTP_HMM_TIMEOUT', 30),
         ],
 
     ],

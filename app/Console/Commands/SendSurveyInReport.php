@@ -27,7 +27,7 @@ class SendSurveyInReport extends Command
         // Penerima tetap (bisa Anda buat config jika perlu)
         $to = [
             'ghossan@perserobatam.id',
-            'ali@perserobatam.com',
+            'ali@perserobatam.id',
             'hadhrat.khalil@perserobatam.com',
             'cs.depo@perserobatam.com',
         ];

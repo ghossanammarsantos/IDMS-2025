@@ -7,6 +7,7 @@ use App\Services\Edi\CodecoBuilder;
 use App\Services\Edi\CodecoDataService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
 
 class GenerateCodeco extends Command
 {
@@ -20,7 +21,7 @@ class GenerateCodeco extends Command
         {--recipient=}
         {--carrier=}';
 
-    protected $description = 'Generate EDI CODECO sesuai dokumen; support split per shipping line (CUSTOMER_CODE)';
+    protected $description = 'Generate EDI CODECO sesuai dokumen; split per shipping line dan upload SFTP untuk HMM';
 
     public function handle(CodecoBuilder $builder, CodecoDataService $data)
     {
@@ -34,7 +35,8 @@ class GenerateCodeco extends Command
         $now   = now($tz);
         $icRef = 'O' . $now->format('ymdHi');   // OYYMMDDHHMM
         $msgRf = $icRef . '001';
-        $docNo = $now->format('ymdHi') . '403'; // 13-digit ala contoh (YYMMDDHHMM + 3 digit)
+        // DOCNO 13-digit ala contoh (YYMMDDHHMM + 3 digit unik)
+        $docNo = $now->format('ymdHi') . '403';
 
         $dateYmd = $dateOpt ? Carbon::parse($dateOpt, $tz)->format('Y-m-d') : null;
 
@@ -46,29 +48,24 @@ class GenerateCodeco extends Command
             return 0;
         }
 
-        // Tentukan mode:
-        // - Jika user set --customer, maka 1 file saja untuk customer tsb.
-        // - Jika tidak set --customer, default: split per customer ditemukan (atau pakai --split-by-customer).
-        $groups = [];
-        if ($customer || $split || true) {
-            // group by customer_code (NULL/empty dikelompokkan sebagai 'UNKNOWN')
-            $groups = $rows->groupBy(function ($r) {
+        // Penentuan grouping: jika --customer diisi → 1 group; jika tidak → group by customer_code
+        $groups = $customer
+            ? collect([$customer => $rows])
+            : $rows->groupBy(function ($r) {
                 return strtoupper($r->customer_code ?: 'UNKNOWN');
             });
-        } else {
-            // (opsi ini tidak akan terpakai karena kita selalu split; taruh untuk fleksibilitas)
-            $groups = collect(['ALL' => $rows]);
-        }
 
         $totalFiles = 0;
         $totalIn    = 0;
         $totalOut   = 0;
 
         foreach ($groups as $custCode => $group) {
-            // Header khusus group
+            $custCodeUp     = strtoupper($custCode);
             $voyageFromData = $data->inferVoyage($group, $this->option('voyage'));
+
+            // Header untuk builder
             $header = [
-                'customer_code'   => $custCode === 'UNKNOWN' ? null : $custCode,
+                'customer_code'   => $custCodeUp === 'UNKNOWN' ? null : $custCodeUp,
                 'voyage'          => $voyageFromData,
                 'created_at'      => $now,
                 'interchange_ref' => $icRef,
@@ -79,7 +76,7 @@ class GenerateCodeco extends Command
                 'carrier'         => $this->option('carrier'),
             ];
 
-            // Map containers
+            // Map containers → array of arrays (sesuai builder)
             $containers = $group->map(function ($r) use ($tz) {
                 return [
                     'container_no'     => strtoupper((string) $r->container_no),
@@ -103,25 +100,53 @@ class GenerateCodeco extends Command
                 ];
             })->values()->all();
 
-            // Build text
+            // Build EDI
             $ediText = $builder->build($header, $containers);
 
-            // Simpan file per shipping line
-            $custSlug = $custCode === 'UNKNOWN' ? 'UNKNOWN' : preg_replace('/[^A-Z0-9]+/', '', strtoupper($custCode));
-            $outfile  = storage_path('app/edi/TBMIDBTM_CODECO_' . $custSlug . '_' . $event . '_' . $now->format('ymdHi') . '.txt');
+            // Simpan lokal
+            $custSlug = $custCodeUp === 'UNKNOWN' ? 'UNKNOWN' : preg_replace('/[^A-Z0-9]+/', '', $custCodeUp);
+            $localName = 'TBMIDBTM_CODECO_' . $custSlug . '_' . $event . '_' . $now->format('ymdHi') . '.txt';
+            $outfile   = storage_path('app/edi/' . $localName);
             @mkdir(dirname($outfile), 0775, true);
             file_put_contents($outfile, $ediText);
 
             $this->info("Generated: {$outfile}");
-            $this->line("Customer : {$custCode}");
-            if ($event === EdiEvent::IN) {
-                $this->line("Gate IN  : " . count($containers));
-                $totalIn += count($containers);
-            } else {
-                $this->line("Gate OUT : " . count($containers));
-                $totalOut += count($containers);
+            $this->line("Customer : {$custCodeUp}");
+            $this->line(($event === EdiEvent::IN ? "Gate IN  : " : "Gate OUT : ") . count($containers));
+
+            // =========================
+            // Upload ke SFTP khusus HMM
+            // =========================
+            if ($custCodeUp === 'HMM') {
+                try {
+                    // Nama file di SFTP. Jika butuh subfolder harian, aktifkan blok di bawah.
+                    $remoteName = $localName;
+
+                    // -- subfolder harian (opsional) --
+                    // $folder = date('Ymd', $now->getTimestamp());
+                    // if (!Storage::disk('sftp_hmm')->exists($folder)) {
+                    //     Storage::disk('sftp_hmm')->makeDirectory($folder);
+                    // }
+                    // $remoteName = $folder . '/' . $localName;
+
+                    $ok = Storage::disk('sftp_hmm')->put($remoteName, $ediText);
+
+                    if ($ok) {
+                        $this->info("Uploaded to SFTP (HMM): {$remoteName}");
+                    } else {
+                        $this->error("Upload to SFTP (HMM) FAILED: {$remoteName}");
+                    }
+                } catch (\Throwable $e) {
+                    $this->error("SFTP (HMM) error: " . $e->getMessage());
+                }
             }
 
+            // Akumulasi rekap
+            if ($event === EdiEvent::IN) {
+                $totalIn += count($containers);
+            } else {
+                $totalOut += count($containers);
+            }
             $totalFiles++;
         }
 
