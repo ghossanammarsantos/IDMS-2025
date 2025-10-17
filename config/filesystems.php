@@ -65,14 +65,25 @@ return [
         ],
 
         'sftp_hmm' => [
-            'driver'   => 'sftp', // Flysystem v1 adapter
+            'driver'   => 'sftp',
             'host'     => env('SFTP_HMM_HOST'),
             'port'     => (int) env('SFTP_HMM_PORT', 22),
-            'username' => env('SFTP_Hmm_USERNAME', env('SFTP_HMM_USERNAME')), // fallback
+            'username' => env('SFTP_HMM_USERNAME'),
             'password' => env('SFTP_HMM_PASSWORD'),
-            'root'     => env('SFTP_HMM_ROOT', '/'),
-            'timeout'  => (int) env('SFTP_HMM_TIMEOUT', 30),
+            'root'     => env('SFTP_HMM_ROOT', '/files'),
+            'timeout'  => 30,
         ],
+
+
+        // 'sftp_hmm' => [
+        //     'driver'   => 'sftp', // Flysystem v1 adapter
+        //     'host'     => env('SFTP_HMM_HOST'),
+        //     'port'     => (int) env('SFTP_HMM_PORT', 22),
+        //     'username' => env('SFTP_Hmm_USERNAME', env('SFTP_HMM_USERNAME')), // fallback
+        //     'password' => env('SFTP_HMM_PASSWORD'),
+        //     'root'     => env('SFTP_HMM_ROOT', '/'),
+        //     'timeout'  => (int) env('SFTP_HMM_TIMEOUT', 30),
+        // ],
 
     ],
 

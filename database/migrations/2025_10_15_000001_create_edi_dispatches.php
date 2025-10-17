@@ -1,0 +1,109 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
+
+class CreateEdiDispatches extends Migration
+{
+    public function up()
+    {
+        // 1) CREATE TABLE (tanpa komentar & tanpa "CHAR" semantics)
+        DB::unprepared(<<<'SQL'
+CREATE TABLE EDI_DISPATCHES (
+    ID                  NUMBER(19)        NOT NULL,
+    JENIS_EDI           VARCHAR2(20)      NOT NULL,
+    CUSTOMER_CODE       VARCHAR2(32)      NOT NULL,
+    EVENT_TYPE          VARCHAR2(10)      NOT NULL,
+
+    CONTAINER_NO        VARCHAR2(20)      NOT NULL,
+    GATE_TIME           TIMESTAMP(0)      NOT NULL,
+
+    ISO                 VARCHAR2(10),
+    BOOKING_NO          VARCHAR2(50),
+    VOYAGE              VARCHAR2(50),
+    STATUS_CONTAINER    VARCHAR2(10),
+    GRADE_CONTAINER     VARCHAR2(10),
+    GROSS_WEIGHT        NUMBER(10,2),
+    CONSIGNEE           VARCHAR2(255),
+
+    STATUS              VARCHAR2(10)      NOT NULL,
+    ATTEMPT_COUNT       NUMBER(5)         DEFAULT 0 NOT NULL,
+    LAST_ATTEMPT_AT     TIMESTAMP(0),
+    NEXT_RETRY_AT       TIMESTAMP(0),
+    LAST_ERROR          CLOB,
+
+    LOCAL_PATH          VARCHAR2(255),
+    REMOTE_PATH         VARCHAR2(255),
+    EDI_MESSAGE_ID      VARCHAR2(64),
+    EDI_INTERCHANGE_ID  VARCHAR2(64),
+    FILE_CHECKSUM       CHAR(32),
+
+    CREATED_AT          TIMESTAMP(0)      DEFAULT SYSTIMESTAMP NOT NULL,
+    UPDATED_AT          TIMESTAMP(0),
+    SENT_AT             TIMESTAMP(0),
+
+    CONSTRAINT PK_EDI_DISPATCHES PRIMARY KEY (ID)
+)
+SQL);
+
+        // 2) CONSTRAINT pakai ALTER TABLE (lebih aman)
+        DB::unprepared(<<<'SQL'
+ALTER TABLE EDI_DISPATCHES
+  ADD CONSTRAINT UQ_EDI_DISP_UNIQ
+  UNIQUE (JENIS_EDI, CUSTOMER_CODE, EVENT_TYPE, CONTAINER_NO, GATE_TIME)
+SQL);
+
+        DB::unprepared(<<<'SQL'
+ALTER TABLE EDI_DISPATCHES
+  ADD CONSTRAINT CK_EDI_DISP_EVENT
+  CHECK (EVENT_TYPE IN ('GATEIN','GATEOUT'))
+SQL);
+
+        DB::unprepared(<<<'SQL'
+ALTER TABLE EDI_DISPATCHES
+  ADD CONSTRAINT CK_EDI_DISP_STATUS
+  CHECK (STATUS IN ('PENDING','BUILDING','READY','UPLOADING','SENT','FAILED','SKIPPED'))
+SQL);
+
+        // 3) INDEX
+        DB::unprepared("CREATE INDEX IX_EDI_DISP_STATUS_RETRY ON EDI_DISPATCHES (STATUS, NEXT_RETRY_AT)");
+        DB::unprepared("CREATE INDEX IX_EDI_DISP_CUST_STATUS  ON EDI_DISPATCHES (CUSTOMER_CODE, STATUS)");
+        DB::unprepared("CREATE INDEX IX_EDI_DISP_GATE_TIME    ON EDI_DISPATCHES (GATE_TIME)");
+
+        // 4) SEQUENCE
+        DB::unprepared("CREATE SEQUENCE SEQ_EDI_DISPATCHES START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE");
+
+        // 5) TRIGGER BEFORE INSERT (auto ID + touch UPDATED_AT)
+        DB::unprepared(<<<'SQL'
+CREATE OR REPLACE TRIGGER BI_EDI_DISPATCHES
+BEFORE INSERT ON EDI_DISPATCHES
+FOR EACH ROW
+BEGIN
+    IF :NEW.ID IS NULL THEN
+        SELECT SEQ_EDI_DISPATCHES.NEXTVAL INTO :NEW.ID FROM DUAL;
+    END IF;
+    :NEW.UPDATED_AT := SYSTIMESTAMP;
+END;
+SQL);
+
+        // 6) TRIGGER BEFORE UPDATE (touch UPDATED_AT)
+        DB::unprepared(<<<'SQL'
+CREATE OR REPLACE TRIGGER BU_EDI_DISPATCHES
+BEFORE UPDATE ON EDI_DISPATCHES
+FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := SYSTIMESTAMP;
+END;
+
+SQL);
+    }
+
+    public function down()
+    {
+        // urutan drop: trigger → sequence → table
+        DB::unprepared("DROP TRIGGER BU_EDI_DISPATCHES");
+        DB::unprepared("DROP TRIGGER BI_EDI_DISPATCHES");
+        DB::unprepared("DROP SEQUENCE SEQ_EDI_DISPATCHES");
+        DB::unprepared("DROP TABLE EDI_DISPATCHES PURGE");
+    }
+}

@@ -12,7 +12,8 @@ class CodecoDataService
     private $schema;
     private $tz;
 
-    private static $annSource = null; // cache meta ANN_*
+    // cache metadata sumber ANN_*
+    private static $annSource = null;
 
     public function __construct($connection = 'oracle', $schema = 'C##IDMSTEMP2025', $tz = 'Asia/Jakarta')
     {
@@ -23,7 +24,7 @@ class CodecoDataService
 
     /**
      * Ambil data kontainer unik untuk HARI INI (atau $dateYmd jika diisi, format YYYY-MM-DD).
-     * Bisa difilter per-customer shipping line (CUSTOMER_CODE), jika $customerCode diisi.
+     * Bisa difilter per-customer (CUSTOMER_CODE).
      */
     public function fetchToday(string $event, ?string $dateYmd = null, ?string $customerCode = null)
     {
@@ -34,21 +35,21 @@ class CodecoDataService
         $this->resolveAnnSource();
 
         return $event === EdiEvent::IN
-            ? $this->fetchGateInBetween($start, $end, $customerCode)
-            : $this->fetchGateOutBetween($start, $end, $customerCode);
+            ? $this->fetchInBetween($start, $end, $customerCode)
+            : $this->fetchOutBetween($start, $end, $customerCode);
     }
 
-    /** Tentukan sumber ANN_* dan ketersediaan kolomnya. */
+    /** Tentukan sumber ANN_* dan ketersediaan kolomnya. Prefer ANN_IMPORT bila ada. */
     private function resolveAnnSource(): void
     {
         if (self::$annSource !== null) return;
 
         $owner = $this->schema;
-        $table = $this->tableExists('ANN_REPORT') ? 'ANN_REPORT'
-            : ($this->tableExists('ANN_IMPORT') ? 'ANN_IMPORT' : null);
+        $table = $this->tableExists('ANN_IMPORT') ? 'ANN_IMPORT'
+            : ($this->tableExists('ANN_REPORT') ? 'ANN_REPORT' : null);
 
         if ($table === null) {
-            throw new \RuntimeException("Neither {$owner}.ANN_REPORT nor {$owner}.ANN_IMPORT exists / accessible.");
+            throw new \RuntimeException("Neither {$owner}.ANN_IMPORT nor {$owner}.ANN_REPORT exists / accessible.");
         }
 
         self::$annSource = [
@@ -73,10 +74,12 @@ class CodecoDataService
         return !empty(DB::connection($this->connection)->select($sql, [$this->schema, strtoupper($table), strtoupper($column)]));
     }
 
+    /** Subquery ANN_* yang fleksibel kolomnya */
     private function annSubquery(): string
     {
-        $s = $this->schema;
+        $s  = $this->schema;
         $as = self::$annSource;
+
         $cols = [
             "NO_CONTAINER",
             $as['has_size_type']     ? "SIZE_TYPE"     : "NULL AS SIZE_TYPE",
@@ -85,6 +88,7 @@ class CodecoDataService
             $as['has_voyage']        ? "VOYAGE"        : "NULL AS VOYAGE",
             $as['has_no_bldo']       ? "NO_BLDO"       : "NULL AS NO_BLDO",
         ];
+
         return "
             (
               SELECT " . implode(", ", $cols) . ",
@@ -95,6 +99,7 @@ class CodecoDataService
         ";
     }
 
+    /** Subquery survey terakhir per container */
     private function surveySubquery(): string
     {
         $s = $this->schema;
@@ -108,8 +113,10 @@ class CodecoDataService
         ";
     }
 
-    private function fetchGateInBetween(Carbon $start, Carbon $end, ?string $customerCode = null)
+    /** Gate IN: boleh gunakan g.SIZE_TYPE & g.NO_BLDO bila tersedia */
+    public function fetchInBetween(Carbon $start, Carbon $end, ?string $customerCode = null)
     {
+        $this->resolveAnnSource();
         $s = $this->schema;
 
         $query = DB::connection($this->connection)
@@ -130,27 +137,32 @@ class CodecoDataService
         }
 
         return $query->selectRaw("
-                ar.CUSTOMER_CODE          AS customer_code,
-                ar.VOYAGE                 AS voyage,
+                NVL(ar.CUSTOMER_CODE, 'UNKNOWN')             AS customer_code,
+                ar.VOYAGE                                     AS voyage,
 
-                COALESCE(ar.NO_CONTAINER, g.NO_CONTAINER) AS container_no,
-                COALESCE(ar.SIZE_TYPE, sv.SIZE_TYPE)      AS iso,
-                COALESCE(ar.NO_BLDO, g.NO_BLDO)           AS booking_no,
+                COALESCE(ar.NO_CONTAINER, g.NO_CONTAINER)     AS container_no,
+                COALESCE(ar.SIZE_TYPE, g.SIZE_TYPE, sv.SIZE_TYPE) AS iso,
+                COALESCE(ar.NO_BLDO, g.NO_BLDO)               AS booking_no,
 
-                g.GATEIN_TIME             AS gate_time,
-                sv.PAYLOAD                AS payload,
-                sv.TARE                   AS tare,
-                sv.MAXGROSS               AS maxgross,
-                sv.STATUS_CONTAINER       AS status_container,
-                sv.GRADE_CONTAINER        AS grade_container,
-                ar.CONSIGNEE              AS consignee
+                g.GATEIN_TIME                                 AS gate_time,
+                sv.PAYLOAD                                    AS payload,
+                sv.TARE                                       AS tare,
+                sv.MAXGROSS                                   AS maxgross,
+                sv.STATUS_CONTAINER                           AS status_container,
+                sv.GRADE_CONTAINER                            AS grade_container,
+                ar.CONSIGNEE                                  AS consignee
             ")
             ->orderBy(DB::raw("g.GATEIN_TIME"))
             ->get();
     }
 
-    private function fetchGateOutBetween(Carbon $start, Carbon $end, ?string $customerCode = null)
+    /**
+     * Gate OUT: JANGAN refer ke g.SIZE_TYPE / g.NO_BLDO (umumnya tidak ada di GATE_OUT).
+     * Ambil SIZE_TYPE dari ANN_* atau fallback SURVEYIN. Booking ambil dari ANN_*.
+     */
+    public function fetchOutBetween(Carbon $start, Carbon $end, ?string $customerCode = null)
     {
+        $this->resolveAnnSource();
         $s = $this->schema;
 
         $query = DB::connection($this->connection)
@@ -171,26 +183,26 @@ class CodecoDataService
         }
 
         return $query->selectRaw("
-                ar.CUSTOMER_CODE          AS customer_code,
-                ar.VOYAGE                 AS voyage,
+                NVL(ar.CUSTOMER_CODE, 'UNKNOWN')             AS customer_code,
+                ar.VOYAGE                                     AS voyage,
 
-                COALESCE(ar.NO_CONTAINER, g.NO_CONTAINER) AS container_no,
-                COALESCE(ar.SIZE_TYPE, sv.SIZE_TYPE)      AS iso,
-                COALESCE(ar.NO_BLDO, g.NO_BLDO)           AS booking_no,
+                COALESCE(ar.NO_CONTAINER, g.NO_CONTAINER)     AS container_no,
+                COALESCE(ar.SIZE_TYPE, sv.SIZE_TYPE)          AS iso,
+                ar.NO_BLDO                                    AS booking_no,
 
-                g.GATEOUT_TIME            AS gate_time,
-                sv.PAYLOAD                AS payload,
-                sv.TARE                   AS tare,
-                sv.MAXGROSS               AS maxgross,
-                sv.STATUS_CONTAINER       AS status_container,
-                sv.GRADE_CONTAINER        AS grade_container,
-                ar.CONSIGNEE              AS consignee
+                g.GATEOUT_TIME                                AS gate_time,
+                sv.PAYLOAD                                    AS payload,
+                sv.TARE                                       AS tare,
+                sv.MAXGROSS                                   AS maxgross,
+                sv.STATUS_CONTAINER                           AS status_container,
+                sv.GRADE_CONTAINER                            AS grade_container,
+                ar.CONSIGNEE                                  AS consignee
             ")
             ->orderBy(DB::raw("g.GATEOUT_TIME"))
             ->get();
     }
 
-    /** Ambil CUSTOMER_CODE pertama yang terisi dari kumpulan rows. */
+    /** Util: ambil CUSTOMER_CODE pertama yang terisi dari rows. */
     public function inferCustomerCode($rows, $fallback = null)
     {
         foreach ($rows as $r) {
@@ -199,7 +211,7 @@ class CodecoDataService
         return $fallback;
     }
 
-    /** Ambil VOYAGE pertama yang terisi dari kumpulan rows. */
+    /** Util: ambil VOYAGE pertama yang terisi dari rows. */
     public function inferVoyage($rows, $fallback = null)
     {
         foreach ($rows as $r) {
