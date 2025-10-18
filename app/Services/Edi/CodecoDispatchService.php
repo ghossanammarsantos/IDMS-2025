@@ -9,7 +9,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use App\Services\Edi\CodecoDataService;
 
 class CodecoDispatchService
 {
@@ -46,56 +45,75 @@ class CodecoDispatchService
         ];
 
         foreach ($byCustomer as $customer => $rows) {
-            $cust = $customer ?: 'UNKNOWN';
+            // $rows = array of stdClass; bungkus ke collection agar util bisa dipakai
+            $rowsColl = collect($rows);
+            $cust     = $customer ?: 'UNKNOWN';
 
             // Header EDI
             $now   = now($this->tz);
             $icRef = 'O' . $now->format('ymdHi');
             $msgRf = $icRef . '001';
-            $docNo = $now->format('ymdHis');
+            $docNo = $now->format('ymdHi') . '403';
 
-            $first = reset($rows);
-            $voy   = isset($first->voyage) ? (string)$first->voyage : '';
+            // >>> Gunakan inferVoyage agar tidak kosong di header TDT <<<
+            $voyHdr = $this->data->inferVoyage($rowsColl, '');
 
+            // Jangan override profil customer di builder (biarkan null)
+            // supaya SIT → BAT/SITID & format khusus terpakai.
             $header = [
-                'customer_code'   => $cust,
-                'sender'          => 'TBMIDBTM',
-                'recipient'       => $cust,
-                'carrier'         => $cust,
-                'voyage'          => $voy,
+                'customer_code'   => strtoupper($cust),
+                'sender'          => null,
+                'recipient'       => null,
+                'carrier'         => null,
+                'voyage'          => $voyHdr,
                 'created_at'      => $now,
                 'interchange_ref' => $icRef,
                 'message_ref'     => $msgRf,
                 'document_no'     => $docNo,
             ];
 
-            // Body containers
-            $containers = collect($rows)->map(function ($m) {
+            // Body containers — samakan dengan generate (sertakan voyage & consignee)
+            $containers = $rowsColl->map(function ($m) {
                 return [
-                    'container_no'     => strtoupper($m->container_no),
+                    'container_no'     => strtoupper((string)$m->container_no),
                     'iso'              => strtoupper((string)$m->iso),
-                    'booking_no'       => (string)$m->booking_no,
+                    'booking_no'       => (string)($m->booking_no ?? ''),
                     'event_dt'         => Carbon::parse($m->gate_time, $this->tz),
-                    'status_container' => strtoupper((string)$m->status_container),
-                    'grade_container'  => strtoupper((string)$m->grade_container),
+
+                    // untuk konsistensi (builder gunakan default jika tidak ada)
+                    'port_code'        => 'IDBTM',
+                    'depot_code'       => 'TBMIDBTM',
+
                     'gross_weight'     => $m->gross_weight ?? $m->payload ?? null,
+                    'payload'          => $m->payload ?? null,
+                    'tare'             => $m->tare ?? null,
+                    'maxgross'         => $m->maxgross ?? null,
+
+                    'status_container' => $m->status_container ?? null,
+                    'grade_container'  => $m->grade_container ?? null,
+
+                    'voyage'           => $m->voyage ?? null,
+                    'consignee'        => $m->consignee ?? null,
                 ];
-            })->all();
+            })->values()->all();
 
             // Build text (untuk file, tetap kirim IN/OUT)
             $ediText = $this->builder->build($header, $containers, strtoupper($event));
 
-            // Simpan file lokal
-            $outfile = storage_path('app/edi/TBMIDBTM_CODECO_' . $cust . '_' . strtoupper($event) . '_' . $now->format('ymdHi') . '.txt');
+            // ==== Penamaan file lokal ====
+            // Khusus SIT: pakai awalan TBMIDBAT_ (bukan TBMIDBTM_)
+            $custSlug   = $cust === 'UNKNOWN' ? 'UNKNOWN' : preg_replace('/[^A-Z0-9]+/', '', strtoupper($cust));
+            $prefixTerm = ($custSlug === 'SIT') ? 'TBMIDBAT' : 'TBMIDBTM';
+            $localName  = $prefixTerm . '_CODECO_' . $custSlug . '_' . strtoupper($event) . '_' . $now->format('ymdHi') . '.txt';
+            $outfile    = storage_path('app/edi/' . $localName);
             @mkdir(dirname($outfile), 0775, true);
             file_put_contents($outfile, $ediText);
 
             // Upload via disk yg dipetakan
-            $disk = SftpRouter::forCustomer($cust);
+            $disk     = SftpRouter::forCustomer($custSlug);
             $uploaded = false;
             if ($disk) {
-                $remote = basename($outfile);
-                $uploaded = Storage::disk($disk)->put($remote, file_get_contents($outfile));
+                $uploaded = Storage::disk($disk)->put($localName, $ediText);
             }
 
             // Update hasil attempt per baris
@@ -104,8 +122,8 @@ class CodecoDispatchService
                 $count++;
                 $this->markAttempt(
                     EdiType::CODECO,
-                    $cust,
-                    $event, // tetap kirim IN/OUT ke helper, dia akan norm ke DB
+                    $custSlug,
+                    $event, // akan dinormalisasi ke GATEIN/GATEOUT
                     (string)$r->container_no,
                     $r->gate_time,
                     $uploaded ? 'SENT' : 'FAILED',
@@ -113,7 +131,7 @@ class CodecoDispatchService
                 );
             }
 
-            $summary['by_customer'][$cust] = [
+            $summary['by_customer'][$custSlug] = [
                 'count'    => $count,
                 'file'     => $outfile,
                 'uploaded' => (bool)$uploaded,
@@ -121,7 +139,7 @@ class CodecoDispatchService
             $summary['total'] += $count;
 
             echo "Generated: {$outfile}\n";
-            echo "Customer : {$cust}\n";
+            echo "Customer : {$custSlug}\n";
             echo "Count    : {$count}\n";
             echo "Uploaded : " . ($uploaded ? 'YES' : 'NO') . "\n";
         }
@@ -132,19 +150,19 @@ class CodecoDispatchService
     /** Ambil data Oracle & upsert ke EDI_DISPATCHES */
     private function enqueueFromOracleWindow(string $event, Carbon $start, Carbon $end, ?string $customer): int
     {
-        $rows = $this->fetchBetween($event, $start, $end, $customer);
+        $rows   = $this->fetchBetween($event, $start, $end, $customer);
         $eventDb = $this->normEventDb($event);
 
         $n = 0;
         foreach ($rows as $r) {
-            // hanya proses data yang sudah punya CUSTOMER_CODE (sesuai kebijakan Anda)
-            $cust = strtoupper((string)($r->customer_code ?? '')) ?: 'UNKNOWN';
+            // hanya proses data yang sudah punya CUSTOMER_CODE
+            $cust = strtoupper((string)($r->customer_code ?? ''));
             if ($cust === '') continue;
 
             $this->upsertDispatch([
                 'jenis_edi'        => EdiType::CODECO,
                 'customer_code'    => $cust,
-                'event_type'       => $eventDb, // << simpan GATEIN/GATEOUT ke DB
+                'event_type'       => $eventDb,
                 'container_no'     => (string)$r->container_no,
                 'gate_time'        => $r->gate_time,
                 'iso'              => (string)$r->iso,
@@ -222,7 +240,7 @@ class CodecoDispatchService
         DB::insert($sql, [
             'p_edi' => $m['jenis_edi'],
             'p_cust' => $m['customer_code'],
-            'p_evt' => $m['event_type'], // << sudah GATEIN/GATEOUT
+            'p_evt' => $m['event_type'],
             'p_cn'  => $m['container_no'],
             'p_gt'  => $gt,
             'p_iso' => $m['iso'],
@@ -259,7 +277,7 @@ class CodecoDispatchService
 
         $params = [
             'p_edi'   => EdiType::CODECO,
-            'p_evt'   => $evtDb, // << filter pakai GATEIN/GATEOUT
+            'p_evt'   => $evtDb,
             'p_start' => $start->format('Y-m-d H:i:s'),
             'p_end'   => $end->format('Y-m-d H:i:s'),
         ];
@@ -300,7 +318,7 @@ class CodecoDispatchService
             'p_err'    => $err,
             'p_edi'    => $edi,
             'p_cust'   => $cust,
-            'p_evt'    => $evtDb, // << update pakai GATEIN/GATEOUT
+            'p_evt'    => $evtDb,
             'p_cn'     => $cn,
             'p_gt'     => $gt,
         ]);

@@ -26,10 +26,12 @@ class GenerateCodeco extends Command
     public function handle(CodecoBuilder $builder, CodecoDataService $data)
     {
         $tz       = 'Asia/Jakarta';
-        $event    = EdiEvent::fromOption($this->option('event'));
+        $event    = EdiEvent::fromOption($this->option('event'));   // biasanya "IN" / "OUT"
+        $eventStr = strtoupper((string) $event);                    // pastikan string untuk builder & nama file
+
         $dateOpt  = $this->option('date');          // nullable
         $customer = $this->option('customer');      // nullable
-        $split    = (bool) $this->option('split-by-customer');
+        $split    = (bool) $this->option('split-by-customer'); // (opsional; tidak dipakai saat ini)
 
         // Waktu pembuatan (untuk UNB/BGM dan penamaan file)
         $now   = now($tz);
@@ -41,16 +43,20 @@ class GenerateCodeco extends Command
         $dateYmd = $dateOpt ? Carbon::parse($dateOpt, $tz)->format('Y-m-d') : null;
 
         // Ambil rows (boleh difilter 1 customer; kalau null → ambil semua)
-        $rows = $data->fetchToday($event, $dateYmd, $customer);
+        $rows = $data->fetchToday($eventStr, $dateYmd, $customer);
 
         if ($rows->isEmpty()) {
-            $this->warn("Tidak ada data untuk {$event} pada " . ($dateOpt ?: $now->format('Y-m-d')) . ($customer ? " (customer={$customer})" : ""));
+            $this->warn(
+                "Tidak ada data untuk {$eventStr} pada " .
+                    ($dateOpt ?: $now->format('Y-m-d')) .
+                    ($customer ? " (customer={$customer})" : "")
+            );
             return 0;
         }
 
         // Penentuan grouping: jika --customer diisi → 1 group; jika tidak → group by customer_code
         $groups = $customer
-            ? collect([$customer => $rows])
+            ? collect([strtoupper($customer) => $rows])
             : $rows->groupBy(function ($r) {
                 return strtoupper($r->customer_code ?: 'UNKNOWN');
             });
@@ -63,7 +69,7 @@ class GenerateCodeco extends Command
             $custCodeUp     = strtoupper($custCode);
             $voyageFromData = $data->inferVoyage($group, $this->option('voyage'));
 
-            // Header untuk builder
+            // Header untuk builder (override manual via options bila diisi)
             $header = [
                 'customer_code'   => $custCodeUp === 'UNKNOWN' ? null : $custCodeUp,
                 'voyage'          => $voyageFromData,
@@ -82,8 +88,11 @@ class GenerateCodeco extends Command
                     'container_no'     => strtoupper((string) $r->container_no),
                     'iso'              => strtoupper((string) $r->iso),
                     'booking_no'       => (string) ($r->booking_no ?? ''),
-                    'event_dt'         => Carbon::parse($r->gate_time, $tz),
+                    'event_dt'         => $r->gate_time instanceof Carbon
+                        ? $r->gate_time
+                        : Carbon::parse($r->gate_time, $tz),
 
+                    // default; builder dapat override untuk profil tertentu (mis. SIT → IDBAT/TBMIDBATM)
                     'port_code'        => 'IDBTM',
                     'depot_code'       => 'TBMIDBTM',
 
@@ -100,30 +109,34 @@ class GenerateCodeco extends Command
                 ];
             })->values()->all();
 
-            // Build EDI
-            $ediText = $builder->build($header, $containers);
+            // >>> Perbaikan utama: panggil builder DENGAN argumen event <<<
+            $ediText = $builder->build($header, $containers, $eventStr);
 
-            // Simpan lokal
-            $custSlug = $custCodeUp === 'UNKNOWN' ? 'UNKNOWN' : preg_replace('/[^A-Z0-9]+/', '', $custCodeUp);
-            $localName = 'TBMIDBTM_CODECO_' . $custSlug . '_' . $event . '_' . $now->format('ymdHi') . '.txt';
-            $outfile   = storage_path('app/edi/' . $localName);
+            $ediText = $builder->build($header, $containers, $event);
+
+            // ==== Penamaan file lokal ====
+            // Khusus SIT: pakai awalan TBMIDBAT_ (bukan TBMIDBTM_)
+            // Selain SIT tetap TBMIDBTM_
+            $custSlug   = $custCodeUp === 'UNKNOWN' ? 'UNKNOWN' : preg_replace('/[^A-Z0-9]+/', '', $custCodeUp);
+            $prefixTerm = ($custCodeUp === 'SIT') ? 'TBMIDBAT' : 'TBMIDBTM';
+            $localName  = $prefixTerm . '_CODECO_' . $custSlug . '_' . $event . '_' . $now->format('ymdHi') . '.txt';
+            $outfile    = storage_path('app/edi/' . $localName);
             @mkdir(dirname($outfile), 0775, true);
             file_put_contents($outfile, $ediText);
 
             $this->info("Generated: {$outfile}");
             $this->line("Customer : {$custCodeUp}");
-            $this->line(($event === EdiEvent::IN ? "Gate IN  : " : "Gate OUT : ") . count($containers));
+            $this->line(($eventStr === 'IN' ? "Gate IN  : " : "Gate OUT : ") . count($containers));
 
             // =========================
             // Upload ke SFTP khusus HMM
             // =========================
             if ($custCodeUp === 'HMM') {
                 try {
-                    // Nama file di SFTP. Jika butuh subfolder harian, aktifkan blok di bawah.
                     $remoteName = $localName;
 
-                    // -- subfolder harian (opsional) --
-                    // $folder = date('Ymd', $now->getTimestamp());
+                    // contoh jika ingin subfolder harian:
+                    // $folder = $now->format('Ymd');
                     // if (!Storage::disk('sftp_hmm')->exists($folder)) {
                     //     Storage::disk('sftp_hmm')->makeDirectory($folder);
                     // }
@@ -142,7 +155,7 @@ class GenerateCodeco extends Command
             }
 
             // Akumulasi rekap
-            if ($event === EdiEvent::IN) {
+            if ($eventStr === 'IN') {
                 $totalIn += count($containers);
             } else {
                 $totalOut += count($containers);
@@ -152,7 +165,7 @@ class GenerateCodeco extends Command
 
         $this->line(str_repeat('-', 40));
         $this->line("Total files : {$totalFiles}");
-        if ($event === EdiEvent::IN) {
+        if ($eventStr === 'IN') {
             $this->line("Total Gate IN  : {$totalIn}");
         } else {
             $this->line("Total Gate OUT : {$totalOut}");
