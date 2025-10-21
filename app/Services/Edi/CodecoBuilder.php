@@ -62,7 +62,7 @@ class CodecoBuilder
             $locDepotExt  = 'STO:DP3';
             $mrCode       = 'SITID';
             $carrierCode  = 'SITID';
-            $tdtHeader    = 'TDT+' . $voyHdr . '++:172:87+++:146::\'';
+            $tdtHeader    = 'TDT+20' . $voyHdr . '++:172:87+++:146::\'';
         }
 
         // override manual kalau ada

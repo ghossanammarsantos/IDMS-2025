@@ -8,6 +8,7 @@ class SftpRouter
     {
         $map = [
             'HMM' => 'sftp_hmm',
+            'SIT' => 'sftp_sit',
             // Tambah mapping lain kalau sudah siap konfig disknya
             // 'SIT' => 'sftp_sit',
             // 'MER' => 'sftp_mer',

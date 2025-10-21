@@ -74,6 +74,17 @@ return [
             'timeout'  => 30,
         ],
 
+        'sftp_sit' => [
+            'driver'   => 'sftp',
+            'host'     => env('SFTP_SIT_HOST'),
+            'port'     => (int) env('SFTP_SIT_PORT', 22),
+            'username' => env('SFTP_SIT_USERNAME'),
+            'password' => env('SFTP_SIT_PASSWORD'),
+            'root'     => env('SFTP_SIT_ROOT', '/'),
+            'timeout'  => 30,
+        ],
+
+
 
         // 'sftp_hmm' => [
         //     'driver'   => 'sftp', // Flysystem v1 adapter

@@ -19,24 +19,33 @@ class Kernel extends ConsoleKernel
 
     /**
      * Define the application's command schedule.
-     *
-     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
-     * @return void
      */
     protected function schedule(Schedule $schedule)
     {
-        // Jalankan setiap 3 jam, tepat menit 00, pakai zona WIB
+        // EXISTING: laporan survey in
         $schedule->command('report:surveyin:send')
             ->cron('0 */3 * * *')
             ->timezone('Asia/Jakarta')
             ->withoutOverlapping()
-            ->onOneServer(); // jika pakai multi-instance
+            ->onOneServer();
+
+        // NEW: generate CODECO Gate IN tiap 3 jam
+        $schedule->command('edi:codeco:generate --event=IN')
+            ->cron('0 */3 * * *')
+            ->timezone('Asia/Jakarta')
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // NEW: generate CODECO Gate OUT tiap 3 jam
+        $schedule->command('edi:codeco:generate --event=OUT')
+            ->cron('0 */3 * * *')
+            ->timezone('Asia/Jakarta')
+            ->withoutOverlapping()
+            ->onOneServer();
     }
 
     /**
      * Register the commands for the application.
-     *
-     * @return void
      */
     protected function commands()
     {

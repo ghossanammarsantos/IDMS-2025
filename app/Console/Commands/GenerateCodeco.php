@@ -131,26 +131,20 @@ class GenerateCodeco extends Command
             // =========================
             // Upload ke SFTP khusus HMM
             // =========================
-            if ($custCodeUp === 'HMM') {
+            if (in_array($custCodeUp, ['HMM', 'SIT'], true)) {
                 try {
                     $remoteName = $localName;
 
-                    // contoh jika ingin subfolder harian:
-                    // $folder = $now->format('Ymd');
-                    // if (!Storage::disk('sftp_hmm')->exists($folder)) {
-                    //     Storage::disk('sftp_hmm')->makeDirectory($folder);
-                    // }
-                    // $remoteName = $folder . '/' . $localName;
-
-                    $ok = Storage::disk('sftp_hmm')->put($remoteName, $ediText);
+                    $disk = $custCodeUp === 'HMM' ? 'sftp_hmm' : 'sftp_sit';
+                    $ok   = Storage::disk($disk)->put($remoteName, $ediText);
 
                     if ($ok) {
-                        $this->info("Uploaded to SFTP (HMM): {$remoteName}");
+                        $this->info("Uploaded to SFTP ({$custCodeUp}): {$remoteName}");
                     } else {
-                        $this->error("Upload to SFTP (HMM) FAILED: {$remoteName}");
+                        $this->error("Upload to SFTP ({$custCodeUp}) FAILED: {$remoteName}");
                     }
                 } catch (\Throwable $e) {
-                    $this->error("SFTP (HMM) error: " . $e->getMessage());
+                    $this->error("SFTP ({$custCodeUp}) error: " . $e->getMessage());
                 }
             }
 

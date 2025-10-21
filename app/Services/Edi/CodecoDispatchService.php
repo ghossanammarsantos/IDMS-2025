@@ -105,7 +105,7 @@ class CodecoDispatchService
             $custSlug   = $cust === 'UNKNOWN' ? 'UNKNOWN' : preg_replace('/[^A-Z0-9]+/', '', strtoupper($cust));
             $prefixTerm = ($custSlug === 'SIT') ? 'TBMIDBAT' : 'TBMIDBTM';
             $localName  = $prefixTerm . '_CODECO_' . $custSlug . '_' . strtoupper($event) . '_' . $now->format('ymdHi') . '.txt';
-            $outfile    = storage_path('app/edi/' . $localName);
+            $outfile = storage_path('app/edi/' . $prefixTerm . '_CODECO_' . $cust . '_' . strtoupper($event) . '_' . $now->format('ymdHi') . '.txt');
             @mkdir(dirname($outfile), 0775, true);
             file_put_contents($outfile, $ediText);
 
